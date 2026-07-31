@@ -45,6 +45,11 @@ function resolveSecureCookies(): boolean {
   return publicUrl.startsWith('https://');
 }
 
+function envBool(key: string): boolean {
+  const v = process.env[key];
+  return v === 'true' || v === '1';
+}
+
 export const config = {
   port: Number(envStr('PORT', '4000')),
   dataDir,
@@ -52,8 +57,19 @@ export const config = {
   jwtSecret: resolveSecret(),
   /** Lifetime of a browser session token. */
   sessionTtl: '12h',
-  /** Public base URL, used in install instructions and the device-auth prompt. */
+  /**
+   * Canonical base URL. It is the fallback for the install instructions and the
+   * device-auth prompt — both normally answer with the address the caller
+   * actually reached, see `origin.ts`.
+   */
   publicUrl,
+  /** Always answer with `publicUrl`, never with the address in the request. */
+  pinPublicUrl: envBool('SHKILLS_PIN_PUBLIC_URL'),
+  /**
+   * Honour `X-Forwarded-Proto`/`X-Forwarded-Host`. Only turn this on when a
+   * proxy really is in front, otherwise any client can claim to be on https.
+   */
+  trustProxy: envBool('SHKILLS_TRUST_PROXY'),
   secureCookies: resolveSecureCookies(),
   isProduction: process.env.NODE_ENV === 'production',
 };

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { randomBytes, randomInt } from 'node:crypto';
 import { audit, db } from '../db.js';
-import { config } from '../config.js';
+import { originFor } from '../origin.js';
 import { newDeviceToken, requireAuth } from '../auth.js';
 import { h, parse, param } from '../http.js';
 import { DomainError } from '../services/skills.js';
@@ -45,6 +45,9 @@ deviceRouter.post(
       req.body ?? {},
     );
     db.prepare("DELETE FROM device_auth WHERE expires_at <= datetime('now')").run();
+    // The CLI must be sent to the address it is already talking to, or the
+    // person is asked to approve a machine on a portal they cannot reach.
+    const origin = originFor(req);
 
     const deviceCode = randomBytes(32).toString('base64url');
     const code = userCode();
@@ -56,8 +59,8 @@ deviceRouter.post(
     res.status(201).json({
       deviceCode,
       userCode: code,
-      verificationUri: `${config.publicUrl}/link`,
-      verificationUriComplete: `${config.publicUrl}/link?code=${encodeURIComponent(code)}`,
+      verificationUri: `${origin}/link`,
+      verificationUriComplete: `${origin}/link?code=${encodeURIComponent(code)}`,
       expiresIn: DEVICE_CODE_TTL_MINUTES * 60,
       interval: 2,
     });

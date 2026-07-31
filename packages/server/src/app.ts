@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { attachUser } from './auth.js';
+import { config } from './config.js';
 import { errorHandler } from './http.js';
 import { authRouter } from './routes/auth.js';
 import { skillsRouter } from './routes/skills.js';
@@ -19,6 +20,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export function createApp(): Express {
   const app = express();
   app.disable('x-powered-by');
+  // Off by default: without a proxy in front, X-Forwarded-Proto is just a
+  // header anyone can send, and we use it to decide http vs https.
+  if (config.trustProxy) app.set('trust proxy', true);
   app.use(express.json({ limit: '2mb' }));
   app.use(cookieParser());
   app.use(attachUser);
