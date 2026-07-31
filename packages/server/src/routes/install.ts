@@ -15,16 +15,16 @@ const here = path.dirname(fileURLToPath(import.meta.url));
  */
 function cliBundlePath(): string | null {
   const candidates = [
-    path.resolve(here, '../cli/shkills.js'),
-    path.resolve(here, '../../cli/shkills.js'),
-    path.resolve(here, '../../../cli/dist/shkills.js'),
-    path.resolve(process.cwd(), '../cli/dist/shkills.js'),
-    path.resolve(process.cwd(), 'packages/cli/dist/shkills.js'),
+    path.resolve(here, '../cli/shkills.mjs'),
+    path.resolve(here, '../../cli/shkills.mjs'),
+    path.resolve(here, '../../../cli/dist/shkills.mjs'),
+    path.resolve(process.cwd(), '../cli/dist/shkills.mjs'),
+    path.resolve(process.cwd(), 'packages/cli/dist/shkills.mjs'),
   ];
   return candidates.find((p) => fs.existsSync(p)) ?? null;
 }
 
-installRouter.get('/cli/shkills.js', (_req, res) => {
+installRouter.get('/cli/shkills.mjs', (_req, res) => {
   const bundle = cliBundlePath();
   if (!bundle) {
     res.status(503).type('text/plain').send('CLI bundle not built — run `npm run build`');
@@ -79,11 +79,13 @@ fi
 
 mkdir -p "$BIN_DIR"
 say "Downloading the Shkills CLI from $SHKILLS_HOST ..."
-fetch "$SHKILLS_HOST/cli/shkills.js" "$BIN_DIR/shkills.js" || fail "download failed"
+# .mjs, not .js: the bundle is ESM and this directory has no package.json to
+# say so, and Node would parse a bare .js file as CommonJS.
+fetch "$SHKILLS_HOST/cli/shkills.mjs" "$BIN_DIR/shkills.mjs" || fail "download failed"
 
 cat > "$BIN_DIR/shkills" <<LAUNCHER
 #!/bin/sh
-exec node "$BIN_DIR/shkills.js" "\\$@"
+exec node "$BIN_DIR/shkills.mjs" "\\$@"
 LAUNCHER
 chmod +x "$BIN_DIR/shkills"
 

@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "bin": {
-    "shkills": "dist/shkills.js"
+    "shkills": "dist/shkills.mjs"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/shkills.js --banner:js=\"#!/usr/bin/env node\" && chmod +x dist/shkills.js",
-    "test": "vitest run",
+    "//": "The bundle is ESM, so it must end in .mjs — it gets installed into a directory with no package.json, where Node would otherwise parse .js as CommonJS.",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/shkills.mjs --banner:js=\"#!/usr/bin/env node\" && chmod +x dist/shkills.mjs",
+    "test": "npm run build && vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

@@ -8,7 +8,7 @@ import { settingsPath, shkillsHome } from './paths.js';
  * bare `shkills` on PATH, or `node <bundle>.js` — or `setup` would append a
  * duplicate entry every time it ran.
  */
-const SIGNATURE = /shkills(\.js)?["']?\s+sync\b/;
+const SIGNATURE = /shkills(\.[cm]?js)?["']?\s+sync\b/;
 
 function isOurs(command: string | undefined): boolean {
   return !!command && SIGNATURE.test(command);
