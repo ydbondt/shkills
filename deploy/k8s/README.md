@@ -83,6 +83,12 @@ The app pod stays in `ErrImagePull` until the first pipeline run publishes an
 image. That is expected on a fresh cluster; push to `main` (or run the Deploy
 workflow manually) and it resolves itself.
 
+> **On a cluster that is already running**, do not apply `30-deployment.yaml`
+> wholesale: it names `:latest`, so it would throw away the SHA-pinned image the
+> pipeline deployed and lose the record of which commit is live. Patch the part
+> you mean to change — `kubectl -n shkills patch deployment/shkills --patch-file
+> …` — or re-run the Deploy workflow afterwards to pin the image back.
+
 ### 3. Confirm the runner registered
 
 ```sh

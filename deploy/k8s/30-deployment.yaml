@@ -50,6 +50,14 @@ spec:
                 configMapKeyRef:
                   name: shkills-config
                   key: SHKILLS_PUBLIC_URL
+            # Traefik is in front of this, so the forwarded scheme can be
+            # believed — and is how the app will notice the day it gets TLS.
+            - name: SHKILLS_TRUST_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: shkills-config
+                  key: SHKILLS_TRUST_PROXY
+                  optional: true
             # Not in this repo. `kubectl create secret generic shkills-secrets …`
             # — see deploy/k8s/README.md. Changing it signs everybody out.
             - name: SHKILLS_JWT_SECRET
