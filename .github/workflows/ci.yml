@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test on Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Seed a fresh database
+        run: npm run seed
+
+      - name: The server starts and answers
+        run: |
+          node packages/server/dist/index.js &
+          for _ in $(seq 1 30); do
+            curl -fsS http://localhost:4000/api/health && break
+            sleep 1
+          done
+          curl -fsS http://localhost:4000/api/health | grep -q '"ok":true'
+          # The installer and the CLI bundle are both served, or onboarding breaks.
+          curl -fsS http://localhost:4000/install.sh  | grep -q 'Shkills installer'
+          curl -fsS http://localhost:4000/cli/version | grep -q sha256
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: shkills:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: The image runs and answers
+        run: |
+          docker run -d --name shkills -p 4000:4000 \
+            -e SHKILLS_JWT_SECRET=ci-only-not-a-real-secret \
+            shkills:ci
+          for _ in $(seq 1 30); do
+            curl -fsS http://localhost:4000/api/health && break
+            sleep 1
+          done
+          curl -fsS http://localhost:4000/api/health | grep -q '"ok":true'
+          docker rm -f shkills

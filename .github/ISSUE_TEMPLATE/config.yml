@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/ydbondt/shkills/tree/main/docs
+    about: Twelve guides — getting started, the API, deployment, security, troubleshooting.
+  - name: Something is not working
+    url: https://github.com/ydbondt/shkills/blob/main/docs/troubleshooting.md
+    about: Start here. Most problems have an entry.
+  - name: Report a security vulnerability
+    url: https://github.com/ydbondt/shkills/security/advisories/new
+    about: Please report privately rather than opening a public issue.

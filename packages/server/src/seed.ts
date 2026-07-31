@@ -374,6 +374,25 @@ subscribe.run(sofia.id, 'collection', collectionId('sales'));
 subscribe.run(dan.id, 'collection', collectionId('product'));
 subscribe.run(dan.id, 'collection', collectionId('engineering'));
 
+// A company where nobody has linked a laptop reads as a company where nothing
+// works, so give the sample people machines that have already synced.
+const linkDevice = db.prepare(
+  `INSERT INTO device_tokens (user_id, name, token_hash, prefix, last_used_at, last_sync_at)
+   VALUES (?, ?, ?, ?, datetime('now', ?), datetime('now', ?))`,
+);
+const devices: [AuthUser, string, string][] = [
+  [maya, 'maya-macbook', '-14 minutes'],
+  [rob, 'rob-mbp', '-2 hours'],
+  [rob, 'rob-devbox', '-3 hours'],
+  [sofia, 'sofia-laptop', '-5 hours'],
+  [dan, 'dan-macbook', '-40 minutes'],
+  [ines, 'ines-thinkpad', '-21 hours'],
+];
+for (const [user, hostname, ago] of devices) {
+  // Seeded devices exist to make the numbers real; no usable token is issued.
+  linkDevice.run(user.id, hostname, `seed:${hostname}`, hostname.slice(0, 8), ago, ago);
+}
+
 console.log(`Seeded ${skills.length} skills, 4 collections and 5 people.`);
 console.log('');
 console.log('  Sign in at the portal with any of these — password: shkills123');

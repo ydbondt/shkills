@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest something Shkills should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: |
+        What are you trying to do that Shkills makes hard? Describe the
+        situation, not the solution — it is much easier to find a good design
+        from a well-described problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind
+      description: Optional. If you already have a shape in mind, describe it.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: Workarounds, or why the existing features do not cover it.
+
+  - type: checkboxes
+    id: invariants
+    attributes:
+      label: Invariants
+      description: |
+        A few properties are load-bearing (see
+        [CONTRIBUTING.md](https://github.com/ydbondt/shkills/blob/main/CONTRIBUTING.md#invariants--please-do-not-break-these)).
+      options:
+        - label: As far as I can tell, this does not require breaking one of them — or I have said which one and why.

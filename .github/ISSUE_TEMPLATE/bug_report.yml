@@ -1,0 +1,64 @@
+name: Bug report
+description: Something does not work the way it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. If this is a **security** issue, please close this
+        and use [private reporting](https://github.com/ydbondt/shkills/security/advisories/new)
+        instead.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Where
+      options:
+        - CLI (shkills ...)
+        - Portal (the web app)
+        - Server / API
+        - Sync (skills not appearing or not updating)
+        - Deployment (Docker, config, proxy)
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got instead.
+      placeholder: |
+        1. Approved a proposal in the portal
+        2. Ran `shkills sync --force` on my laptop
+        3. Expected the skill to appear; it did not
+    validations:
+      required: true
+
+  - type: textarea
+    id: status
+    attributes:
+      label: "`shkills status` output"
+      description: For anything CLI- or sync-related. Redact the server URL if you need to.
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Server output, or the CLI output with the error.
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "commit sha, or `shkills version`"
+
+  - type: input
+    id: environment
+    attributes:
+      label: Node version and OS
+      placeholder: "Node 20.11.0, macOS 15.3"
+    validations:
+      required: true
