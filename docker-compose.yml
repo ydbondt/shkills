@@ -1,0 +1,18 @@
+services:
+  shkills:
+    build: .
+    ports:
+      - '4000:4000'
+    environment:
+      # The URL people will actually reach this on. It ends up in the install
+      # instructions and the device-link prompt, so it has to be right.
+      SHKILLS_PUBLIC_URL: ${SHKILLS_PUBLIC_URL:-http://localhost:4000}
+      # Generate once and keep it: changing it signs everybody out.
+      SHKILLS_JWT_SECRET: ${SHKILLS_JWT_SECRET:?set a long random value}
+      NODE_ENV: production
+    volumes:
+      - shkills-data:/data
+    restart: unless-stopped
+
+volumes:
+  shkills-data:

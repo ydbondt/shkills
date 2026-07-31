@@ -1,0 +1,317 @@
+@import 'tailwindcss';
+
+/*
+  Shkills design language.
+
+  The brief was "Steve Jobs". That is not a colour palette, it is a discipline:
+  say one thing per screen, remove every line that is not carrying weight, and
+  let type and space do the work. So: one typeface across the whole product with
+  an extreme size range, near-black instead of black, one accent colour used
+  sparingly, and no border where a gap will do.
+*/
+
+@theme {
+  --font-sans: 'Manrope', ui-sans-serif, -apple-system, 'Helvetica Neue', Helvetica, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+}
+
+:root {
+  color-scheme: light;
+
+  --ink: #1d1d1f;          /* text — never pure black, it reads as a hole */
+  --ink-soft: #494950;
+  --ink-faint: #86868b;
+  --line: #e6e6e9;
+  --surface: #ffffff;
+  --surface-sunken: #f5f5f7;
+  --surface-raised: #ffffff;
+  --accent: #0066cc;
+  --accent-hover: #0055aa;
+  --accent-wash: #e8f1fc;
+  --positive: #1d7f4a;
+  --caution: #9a6400;
+  --caution-wash: #fdf3e0;
+  --negative: #c0392b;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.05);
+  --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.06), 0 18px 40px rgb(0 0 0 / 0.10);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --ink: #f5f5f7;
+    --ink-soft: #b8b8bf;
+    --ink-faint: #86868b;
+    --line: #2a2a2e;
+    --surface: #000000;
+    --surface-sunken: #0d0d0f;
+    --surface-raised: #161618;
+    --accent: #4a9eff;
+    --accent-hover: #6fb2ff;
+    --accent-wash: #10243a;
+    --positive: #4cc98a;
+    --caution: #e0a33a;
+    --caution-wash: #2c2313;
+    --negative: #ff6b5d;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px rgb(0 0 0 / 0.35);
+    --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.5), 0 18px 40px rgb(0 0 0 / 0.45);
+  }
+}
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.53;
+  letter-spacing: -0.011em;
+}
+
+/*
+  Type scale. The jumps are deliberately large — a hierarchy of six similar
+  sizes reads as no hierarchy at all. Tracking tightens as size grows, which is
+  what keeps large headings from looking loose.
+*/
+.t-hero {
+  font-size: clamp(2.4rem, 4.6vw, 4rem);
+  line-height: 1.06;
+  letter-spacing: -0.033em;
+  font-weight: 800;
+}
+
+.t-display {
+  font-size: clamp(2rem, 4.2vw, 3.25rem);
+  line-height: 1.07;
+  letter-spacing: -0.028em;
+  font-weight: 800;
+}
+
+.t-title {
+  font-size: 1.6rem;
+  line-height: 1.18;
+  letter-spacing: -0.022em;
+  font-weight: 700;
+}
+
+.t-subtitle {
+  font-size: 1.18rem;
+  line-height: 1.35;
+  letter-spacing: -0.014em;
+  font-weight: 600;
+}
+
+.t-body-lg {
+  font-size: 1.24rem;
+  line-height: 1.5;
+  letter-spacing: -0.014em;
+  color: var(--ink-soft);
+}
+
+.t-meta {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  letter-spacing: 0.004em;
+  color: var(--ink-faint);
+}
+
+/* Small all-caps labels: the only place tracking opens up. */
+.t-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.surface-sunken { background: var(--surface-sunken); }
+.text-soft  { color: var(--ink-soft); }
+.text-faint { color: var(--ink-faint); }
+.accent     { color: var(--accent); }
+
+/* ---- controls ---------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 980px;              /* the pill, all the way round */
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+  padding: 0.6rem 1.25rem;
+  transition: background 0.22s var(--ease), color 0.22s var(--ease),
+              transform 0.22s var(--ease), opacity 0.22s var(--ease);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+.btn-secondary { background: var(--surface-sunken); color: var(--ink); }
+.btn-secondary:hover:not(:disabled) { background: color-mix(in srgb, var(--surface-sunken) 88%, var(--ink)); }
+
+.btn-quiet { background: transparent; color: var(--accent); padding-inline: 0.4rem; }
+.btn-quiet:hover:not(:disabled) { color: var(--accent-hover); }
+
+.btn-danger { background: transparent; color: var(--negative); }
+.btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--negative) 10%, transparent); }
+
+.btn-lg { font-size: 1.0625rem; padding: 0.82rem 1.75rem; }
+
+.field {
+  width: 100%;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--ink);
+  transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+
+.field::placeholder { color: var(--ink-faint); }
+
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.card {
+  background: var(--surface-raised);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.3s var(--ease), transform 0.3s var(--ease);
+}
+
+.card-interactive:hover {
+  box-shadow: var(--shadow-lift);
+  transform: translateY(-2px);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 980px;
+  padding: 0.24rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.002em;
+  background: var(--surface-sunken);
+  color: var(--ink-soft);
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+  cursor: pointer;
+}
+
+.chip-on { background: var(--ink); color: var(--surface); }
+.chip-static { cursor: default; }
+
+.rule { height: 1px; background: var(--line); border: 0; }
+
+/* ---- motion ------------------------------------------------------------ */
+
+/*
+  One orchestrated entrance per screen. Children stagger via --i, which reads
+  as intentional; scattered independent animations read as noise.
+*/
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.rise {
+  animation: rise 0.62s var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 65ms);
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+.pulse-soft { animation: pulse-soft 1.8s var(--ease) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---- long-form content ------------------------------------------------- */
+
+.prose { max-width: 68ch; }
+.prose h1, .prose h2, .prose h3 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 2rem 0 0.6rem;
+  line-height: 1.2;
+}
+.prose h1 { font-size: 1.65rem; }
+.prose h2 { font-size: 1.3rem; }
+.prose h3 { font-size: 1.08rem; }
+.prose p, .prose ul, .prose ol { margin: 0.85rem 0; color: var(--ink-soft); }
+.prose ul, .prose ol { padding-left: 1.35rem; }
+.prose ul { list-style: disc; }
+.prose ol { list-style: decimal; }
+.prose li { margin: 0.3rem 0; }
+.prose strong { color: var(--ink); font-weight: 700; }
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--surface-sunken);
+  padding: 0.12em 0.4em;
+  border-radius: 5px;
+}
+.prose pre {
+  background: var(--surface-sunken);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+.prose pre code { background: none; padding: 0; font-size: 0.84rem; line-height: 1.6; }
+.prose hr { margin: 2rem 0; height: 1px; background: var(--line); border: 0; }
+
+.terminal {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.75;
+  background: var(--surface-sunken);
+  border-radius: 14px;
+  padding: 1.15rem 1.3rem;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+::selection { background: color-mix(in srgb, var(--accent) 26%, transparent); }
+
+/* Tabular figures everywhere numbers are compared vertically. */
+.tnum { font-variant-numeric: tabular-nums; }

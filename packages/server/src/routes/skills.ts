@@ -53,7 +53,8 @@ interface ListRow {
   category: string | null;
   audiences: string | null;
   tags: string | null;
-  version: number | null;
+  /** Null until a version has been approved. */
+  published_version: number | null;
   pending_count: number;
 }
 
@@ -66,8 +67,8 @@ function toSummary(r: ListRow, subscribed = false) {
     category: r.category ?? 'general',
     audiences: r.audiences ? (JSON.parse(r.audiences) as string[]) : [],
     tags: r.tags ? (JSON.parse(r.tags) as string[]) : [],
-    version: r.version ?? 0,
-    published: r.version !== null,
+    version: r.published_version ?? 0,
+    published: r.published_version !== null,
     archived: r.archived === 1,
     owner: r.owner_name,
     pendingCount: r.pending_count,
@@ -93,13 +94,25 @@ skillsRouter.get(
 
     const rows = db
       .prepare(
+        // A skill awaiting its first approval has no published version, but it
+        // still needs a name and a description to show — fall back to its most
+        // recent version so nothing renders as a blank card.
         `SELECT s.id, s.slug, s.archived, s.updated_at, u.name AS owner_name,
-                v.title, v.description, v.category, v.audiences, v.tags, v.version,
+                COALESCE(v.title, latest.title)             AS title,
+                COALESCE(v.description, latest.description) AS description,
+                COALESCE(v.category, latest.category)       AS category,
+                COALESCE(v.audiences, latest.audiences)     AS audiences,
+                COALESCE(v.tags, latest.tags)               AS tags,
+                v.version                                   AS published_version,
                 (SELECT COUNT(*) FROM skill_versions p
                   WHERE p.skill_id = s.id AND p.status = 'pending') AS pending_count
            FROM skills s
            JOIN users u ON u.id = s.owner_id
            LEFT JOIN skill_versions v ON v.id = s.published_version_id
+           LEFT JOIN skill_versions latest
+                  ON latest.id = (SELECT id FROM skill_versions
+                                   WHERE skill_id = s.id
+                                   ORDER BY version DESC LIMIT 1)
           ORDER BY s.updated_at DESC`,
       )
       .all() as ListRow[];
@@ -115,7 +128,7 @@ skillsRouter.get(
     const needle = q.q?.toLowerCase().trim();
     const filtered = rows.filter((r) => {
       if (q.includeArchived === '0' && r.archived === 1) return false;
-      if (q.unpublished === '0' && r.version === null) return false;
+      if (q.unpublished === '0' && r.published_version === null) return false;
       if (q.category && r.category !== q.category) return false;
       if (q.audience && !(r.audiences ?? '[]').toLowerCase().includes(q.audience.toLowerCase())) {
         return false;

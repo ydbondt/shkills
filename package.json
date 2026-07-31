@@ -14,7 +14,7 @@
   "scripts": {
     "build": "npm run build --workspace=@shkills/cli && npm run build --workspace=@shkills/web && npm run build --workspace=@shkills/server",
     "dev": "npm run dev --workspace=@shkills/server",
-    "test": "npm run test --workspace=@shkills/server && npm run test --workspace=@shkills/cli",
+    "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "seed": "npm run seed --workspace=@shkills/server",
     "start": "npm run start --workspace=@shkills/server"

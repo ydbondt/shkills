@@ -69,10 +69,19 @@ collectionsRouter.get(
     if (!c) throw new DomainError('no such collection', 404);
     const skills = db
       .prepare(
-        `SELECT s.id, s.slug, s.archived, v.title, v.description, v.category, v.version
+        // Same fallback as the catalog: an unapproved skill still shows its name.
+        `SELECT s.id, s.slug, s.archived,
+                COALESCE(v.title, latest.title)             AS title,
+                COALESCE(v.description, latest.description) AS description,
+                COALESCE(v.category, latest.category)       AS category,
+                v.version
            FROM collection_skills cs
            JOIN skills s ON s.id = cs.skill_id
            LEFT JOIN skill_versions v ON v.id = s.published_version_id
+           LEFT JOIN skill_versions latest
+                  ON latest.id = (SELECT id FROM skill_versions
+                                   WHERE skill_id = s.id
+                                   ORDER BY version DESC LIMIT 1)
           WHERE cs.collection_id = ?
           ORDER BY cs.position, s.slug`,
       )

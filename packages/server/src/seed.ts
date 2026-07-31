@@ -383,5 +383,10 @@ console.log('    rob@acme.test     curator, engineering');
 console.log('    sofia@acme.test   curator, sales');
 console.log('    dan@acme.test     member, product');
 console.log('    ines@acme.test    member, engineering');
+const waiting = (
+  db.prepare("SELECT COUNT(*) AS n FROM skill_versions WHERE status = 'pending'").get() as {
+    n: number;
+  }
+).n;
 console.log('');
-console.log('  One skill (api-design) is waiting in the review queue.');
+console.log(`  ${waiting} proposals are waiting in the review queue — sign in as a curator to see them.`);
