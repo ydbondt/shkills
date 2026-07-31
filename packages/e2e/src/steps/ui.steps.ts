@@ -109,10 +109,11 @@ Then('I see {string}', async function (this: ShkillsWorld, testId: string) {
 });
 
 Then('I do not see {string}', async function (this: ShkillsWorld, testId: string) {
-  await find(this, testId).waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => undefined);
-  assert.equal(
-    await find(this, testId).count(),
-    0,
+  const element = find(this, testId);
+  // Gone and hidden both count: what the scenario means is "not shown to me".
+  await element.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => undefined);
+  assert.ok(
+    await element.isHidden(),
     `"${testId}" is on the page, and this scenario says it should not be`,
   );
 });
