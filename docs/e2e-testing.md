@@ -109,6 +109,9 @@ All of it is generic — there is no per-page step definition anywhere.
 | `Then I see a message saying "…"` | A toast |
 | `Then the page does not scroll sideways` | |
 | `Then the text is readable against the background` | Contrast ≥ 4.5:1 |
+| `Given I reach the portal at "localhost"` | The same server by another of its names |
+| `Given the browser has no clipboard API, as on a plain-HTTP server` | Removes `navigator.clipboard`, as a non-secure context does |
+| `Then the clipboard holds what "install-command" shows` | Pastes it back with Ctrl+V — the system clipboard, not a spy |
 
 **On a machine** (`src/steps/cli.steps.ts`)
 
@@ -122,6 +125,11 @@ All of it is generic — there is no per-page step definition anywhere.
 | `Then the skill "…" on the machine "laptop" says "…"` | |
 | `When I note the skill "…" on the machine "…"` → `Then … is exactly as it was` | Byte-for-byte |
 | `Then the command succeeds` · `Then the terminal says "…"` | |
+| `When the machine "laptop" installs Shkills from "localhost"` | Runs the real `curl … \| sh`, from that address |
+| `Then the machine "laptop" is pointed at "localhost"` | What its `config.json` will sync from |
+| `Then the machine "laptop" is still linked` · `Then a new shell on "laptop" finds the installed shkills` | |
+| `When "maya@acme.test" links the machine "laptop" from "localhost"` | Links through a different address than the default |
+| `Then the link it printed points at the address that machine uses` | The device-link prompt follows the caller |
 
 **Setting the scene** (`src/steps/setup.steps.ts`) — `Given these people:`,
 `… has published the skill …`, `… has proposed the skill …`,

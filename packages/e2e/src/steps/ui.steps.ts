@@ -166,6 +166,46 @@ Then('I see a message saying {string}', async function (this: ShkillsWorld, expe
     .waitFor({ state: 'visible', timeout: 10_000 });
 });
 
+/**
+ * One server, several names. Whichever one somebody typed is the one the
+ * portal has to keep using — including in the command it tells them to paste.
+ */
+Given('I reach the portal at {string}', function (this: ShkillsWorld, address: string) {
+  this.portalAddress = this.server.url.replace('127.0.0.1', address);
+});
+
+/**
+ * What a browser does on a plain-HTTP deployment. `navigator.clipboard` only
+ * exists in a secure context, and the suite's own server is on 127.0.0.1 —
+ * which counts as one. Taking the property away reproduces, exactly, the state
+ * every LAN install of Shkills is actually in.
+ */
+Given('the browser has no clipboard API, as on a plain-HTTP server', async function (
+  this: ShkillsWorld,
+) {
+  await this.page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+  });
+});
+
+Then('the clipboard holds what {string} shows', async function (this: ShkillsWorld, testId: string) {
+  const shown = ((await find(this, testId).textContent()) ?? '').trim();
+  assert.ok(shown, `${testId} shows nothing, so there is nothing to have copied`);
+
+  // Paste it back rather than reading the clipboard through an API the page
+  // may not have: this asserts the *system* clipboard, which is the thing the
+  // person is about to paste into their terminal.
+  await this.page.evaluate(() => {
+    const input = document.createElement('input');
+    input.id = 'clipboard-probe';
+    document.body.appendChild(input);
+    input.focus();
+  });
+  await this.page.keyboard.press('Control+V');
+  const pasted = await this.page.inputValue('#clipboard-probe');
+  assert.equal(pasted.trim(), shown, 'what got copied is not what the page offered');
+});
+
 Then('the page does not scroll sideways', async function (this: ShkillsWorld) {
   // Let the layout settle before measuring, or a mid-animation frame decides it.
   await this.page.waitForTimeout(400);

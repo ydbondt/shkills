@@ -40,6 +40,10 @@ export class ShkillsWorld extends World {
   noted?: Map<string, string>;
   /** The device code from a refused link, so a scenario can try to reuse it. */
   refusedCode?: string;
+  /** Which of the server's addresses the last link was made through. */
+  lastLoginAddress?: string;
+  /** Which of its addresses the browser is using, when it is not the default. */
+  portalAddress?: string;
 
   constructor(options: IWorldOptions) {
     super(options);
@@ -140,7 +144,9 @@ export class ShkillsWorld extends World {
   // ---- browser -----------------------------------------------------------
 
   async visit(pathname: string): Promise<void> {
-    await this.page.goto(`${this.server.url}${pathname}`, { waitUntil: 'domcontentloaded' });
+    await this.page.goto(`${this.portalAddress ?? this.server.url}${pathname}`, {
+      waitUntil: 'domcontentloaded',
+    });
   }
 }
 

@@ -22,6 +22,9 @@ request is the only authority we have:
 - **D** — the deployment brief: *"Deployed to k3s … no secrets in the public repo."*
 - **V** — the verification brief: *"Install shkills on this machine … change
   skills etc to prove that it works."*
+- **I** — the installer brief: *"Install script does not work very well. It is
+  not referencing to the correct url (IP instead of hostname). And the copy
+  button doesnt work. Thoroughly review it."*
 
 ---
 
@@ -114,6 +117,20 @@ request is the only authority we have:
 | **AC-43** | Every page works at phone width without the page scrolling sideways. | P |
 | **AC-44** | The portal is usable in both light and dark colour schemes. | P |
 | **AC-45** | The service reports its health, so a container orchestrator can tell whether it is up. | D |
+| **AC-46** | Copying the install command works on a plain-HTTP deployment, where the browser offers no clipboard API — and if a browser refuses outright, the button says so instead of doing nothing. | I |
+
+## Naming the right address
+
+One deployment is reachable at several addresses — a NodePort IP, a hostname
+through an ingress, a port-forward to localhost. Naming the wrong one back is
+not cosmetic: it is what an installed machine will talk to for ever after.
+
+| # | Criterion | From |
+| --- | --- | --- |
+| **AC-47** | The install command shown in the portal, the script it serves, and the device-link prompt the CLI prints all name the address the person actually reached, not a hard-coded one. | I |
+| **AC-48** | A Host header that is not a plain host cannot get into the served script; the configured URL is used instead. | I |
+| **AC-49** | Re-running the installer re-points a machine that is still talking to an older address, without unlinking it. | I |
+| **AC-50** | The installer leaves a machine that can run `shkills` — the CLI it downloaded executes, and the launcher is on the PATH of a new shell, even on an account with no shell rc files. | I |
 
 ---
 

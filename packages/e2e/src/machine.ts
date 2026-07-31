@@ -103,9 +103,12 @@ export class Machine {
    * `approve` does whatever a person would do in the browser, and the command
    * finishes on its own once that happens.
    */
-  async login(approve: (userCode: string) => Promise<void>): Promise<CommandResult> {
+  async login(
+    approve: (userCode: string) => Promise<void>,
+    host: string = this.serverUrl,
+  ): Promise<CommandResult> {
     return new Promise((resolve, reject) => {
-      const child = spawn(process.execPath, [cliBundle, 'login', '--host', this.serverUrl], {
+      const child = spawn(process.execPath, [cliBundle, 'login', '--host', host], {
         env: this.env(),
         stdio: ['ignore', 'pipe', 'pipe'],
       });
@@ -196,6 +199,33 @@ export class Machine {
 
   removeMarker(slug: string): void {
     fs.rmSync(path.join(this.skillDir(slug), '.shkills.json'), { force: true });
+  }
+
+  // ---- what this machine believes about its server ------------------------
+
+  /** What `~/.shkills/config.json` says, as the CLI would read it. */
+  shkillsConfig(): { host?: string; token?: string; user?: { email: string } } {
+    const file = path.join(this.shkillsHome, 'config.json');
+    if (!fs.existsSync(file)) return {};
+    return JSON.parse(fs.readFileSync(file, 'utf8')) as { host?: string; token?: string };
+  }
+
+  /**
+   * The onboarding command, run exactly as a person pastes it — including the
+   * pipe into `sh`, which is the part that has bitten this project before.
+   */
+  async install(from: string): Promise<CommandResult> {
+    return this.shell(`curl -fsSL ${from}/install.sh | sh`, { timeoutMs: 60_000 });
+  }
+
+  /**
+   * Where a *new login shell* would find `shkills`. Resolving the path rather
+   * than just running it matters: the machine running the suite may well have
+   * its own Shkills on PATH, and finding that one would prove nothing.
+   */
+  async shkillsOnPath(): Promise<string> {
+    const result = await this.shell(`sh -lc 'command -v shkills'`);
+    return result.stdout.trim();
   }
 
   /** A skill the person wrote themselves — Shkills must never touch it. */

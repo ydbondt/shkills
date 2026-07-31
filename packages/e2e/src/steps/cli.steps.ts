@@ -1,6 +1,7 @@
 import { Given, Then, When } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
 import net from 'node:net';
+import path from 'node:path';
 import type { CommandResult } from '../machine.js';
 import { ShkillsWorld } from '../world.js';
 import { signIn } from './sign-in.js';
@@ -81,6 +82,31 @@ When(
       await this.page.locator('[data-testid="link-approve"]').first().click();
       await this.page.locator('[data-testid="link-approved"]').first().waitFor({ state: 'visible' });
     });
+
+    remember(this, result);
+    assert.equal(result.code, 0, `linking ${name} failed:\n${result.output}`);
+  },
+);
+
+/**
+ * The same dance, but reaching the server by a different one of its names —
+ * which is how the suite can tell whether the device-link prompt follows the
+ * caller or a value baked in at deploy time.
+ */
+When(
+  '{string} links the machine {string} from {string}',
+  { timeout: 120_000 },
+  async function (this: ShkillsWorld, email: string, name: string, address: string) {
+    const machine = this.machine(name);
+    if (this.signedInAs !== this.person(email).email) await signIn(this, email);
+
+    const host = addressBy(this, address);
+    this.lastLoginAddress = host;
+    const result = await machine.login(async (userCode) => {
+      await this.visit(`/link?code=${encodeURIComponent(userCode)}`);
+      await this.page.locator('[data-testid="link-approve"]').first().click();
+      await this.page.locator('[data-testid="link-approved"]').first().waitFor({ state: 'visible' });
+    }, host);
 
     remember(this, result);
     assert.equal(result.code, 0, `linking ${name} failed:\n${result.output}`);
@@ -239,6 +265,66 @@ Then(
       this.machine(name).fingerprint(slug),
       before,
       `${slug} on ${name} was changed, and this scenario says it must not be`,
+    );
+  },
+);
+
+// ---- installing ----------------------------------------------------------
+
+/**
+ * The test server answers on 127.0.0.1; `localhost` is a second name for the
+ * very same process. That is the whole point — one deployment, two addresses,
+ * and the installer has to name back the one that was actually used.
+ */
+function addressBy(world: ShkillsWorld, name: string): string {
+  return world.server.url.replace('127.0.0.1', name);
+}
+
+When(
+  'the machine {string} installs Shkills from {string}',
+  { timeout: 120_000 },
+  async function (this: ShkillsWorld, machine: string, address: string) {
+    remember(this, await this.machine(machine).install(addressBy(this, address)));
+  },
+);
+
+Then(
+  'the machine {string} is pointed at {string}',
+  function (this: ShkillsWorld, machine: string, address: string) {
+    const expected = addressBy(this, address);
+    const actual = this.machine(machine).shkillsConfig().host;
+    assert.equal(
+      actual,
+      expected,
+      `${machine} would talk to ${actual ?? 'nowhere'}, so that is what it will sync from`,
+    );
+  },
+);
+
+Then('the machine {string} is still linked', function (this: ShkillsWorld, machine: string) {
+  const config = this.machine(machine).shkillsConfig();
+  assert.ok(config.token, `${machine} lost its token and would have to be linked again`);
+});
+
+Then(
+  'a new shell on {string} finds the installed shkills',
+  { timeout: 60_000 },
+  async function (this: ShkillsWorld, machine: string) {
+    const found = await this.machine(machine).shkillsOnPath();
+    const expected = path.join(this.machine(machine).shkillsHome, 'bin', 'shkills');
+    assert.equal(found, expected, `a login shell resolved shkills to “${found || 'nothing'}”`);
+  },
+);
+
+Then(
+  'the link it printed points at the address that machine uses',
+  function (this: ShkillsWorld, ) {
+    const result = lastCommand(this);
+    const host = this.lastLoginAddress;
+    assert.ok(host, 'no machine was linked in this scenario');
+    assert.ok(
+      result.output.includes(`${host}/link`),
+      `the terminal told them to open a different address than the one this machine talks to (${host}):\n${result.output}`,
     );
   },
 );
