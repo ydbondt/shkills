@@ -39,17 +39,23 @@ pieces fit together.
 2. **Write a test.** Not optional for anything touching the sync engine, the
    `SessionStart` hook, or the approval workflow — those three are where a bug
    reaches every machine in the company.
-3. **Run the checks.**
+3. **Say what it should do, if it is new behaviour.** Add the criterion to
+   [`docs/acceptance-criteria.md`](docs/acceptance-criteria.md) and a Cucumber
+   scenario that claims it — see
+   [`docs/e2e-testing.md`](docs/e2e-testing.md). The suite refuses to run if a
+   criterion has no scenario, or a scenario claims one that does not exist.
+4. **Run the checks.**
    ```bash
    npm run typecheck
    npm test
+   npm run test:e2e   # if you touched the portal, the CLI or the sync path
    ```
-4. **Update the docs in the same commit.**
+5. **Update the docs in the same commit.**
    - A new or changed endpoint → [`docs/api.md`](docs/api.md)
    - A new or changed command → [`docs/cli.md`](docs/cli.md)
    - A schema change → [`docs/data-model.md`](docs/data-model.md)
    - A new screen → [`docs/portal.md`](docs/portal.md)
-5. **Open a pull request** that says what changed and why.
+6. **Open a pull request** that says what changed and why.
 
 ## House style
 

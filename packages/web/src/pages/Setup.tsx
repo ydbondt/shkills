@@ -39,7 +39,7 @@ export default function Setup() {
   const installCommand = `curl -fsSL ${origin}/install.sh | sh`;
 
   return (
-    <div className="pt-16">
+    <div className="pt-16" data-testid="setup-page">
       <h1 className="t-display rise" style={{ maxWidth: '16ch' }}>
         Set it up once.
       </h1>
@@ -58,11 +58,17 @@ export default function Setup() {
             <p className="text-soft mt-1">Paste this into a terminal. It needs Node 20 or newer.</p>
           </div>
         </div>
-        <div className="mt-5 flex flex-wrap items-center gap-3" style={{ paddingLeft: '4.4rem' }}>
-          <code className="terminal" style={{ minWidth: '20rem', maxWidth: '34rem', flex: '1 1 auto' }}>
+        {/* The step number's indent and the command's minimum width are both
+            dropped on a phone — together they were wider than the screen. */}
+        <div className="mt-5 flex flex-wrap items-center gap-3 sm:pl-[4.4rem]">
+          <code
+            className="terminal min-w-0"
+            data-testid="install-command"
+            style={{ maxWidth: '34rem', flex: '1 1 auto' }}
+          >
             {installCommand}
           </code>
-          <CopyButton text={installCommand} label="Copy command" />
+          <CopyButton text={installCommand} label="Copy command" testId="copy-install-command" />
         </div>
       </section>
 
@@ -106,9 +112,13 @@ export default function Setup() {
         {mine.data && (
           <>
             {mine.data.collections.length > 0 && (
-              <div className="mt-6 flex flex-wrap gap-2">
+              <div className="mt-6 flex flex-wrap gap-2" data-testid="my-collections">
                 {mine.data.collections.map((collection) => (
-                  <span key={collection.slug} className="chip chip-static">
+                  <span
+                    key={collection.slug}
+                    className="chip chip-static"
+                    data-testid={`my-collection-${collection.slug}`}
+                  >
                     {collection.name}
                     {collection.isDefault && ' · everyone'}
                   </span>
@@ -117,19 +127,21 @@ export default function Setup() {
             )}
             {mine.data.skills.length === 0 ? (
               <Empty
+                testId="my-skills-empty"
                 title="No skills yet."
                 detail="Add a few from the catalog, or join a collection."
               />
             ) : (
-              <div className="mt-6 space-y-1" style={{ maxWidth: '46rem' }}>
+              <div className="mt-6 space-y-1" style={{ maxWidth: '46rem' }} data-testid="my-skills">
                 {mine.data.skills.map((skill) => (
                   <div
                     key={skill.slug}
+                    data-testid={`my-skill-${skill.slug}`}
                     className="flex flex-wrap items-baseline justify-between gap-3 py-3"
                     style={{ borderBottom: '1px solid var(--line)' }}
                   >
                     <span style={{ fontWeight: 600 }}>{skill.title}</span>
-                    <span className="t-meta tnum">
+                    <span className="t-meta tnum" data-testid={`my-skill-source-${skill.slug}`}>
                       v{skill.version} · via {skill.sources.join(', ')}
                     </span>
                   </div>
@@ -156,13 +168,14 @@ export default function Setup() {
         {tokens.error && <ErrorNote message={tokens.error} />}
 
         {tokens.data && active.length === 0 && (
-          <Empty title="No machines linked yet." detail="Run the install command above." />
+          <Empty testId="machines-empty" title="No machines linked yet." detail="Run the install command above." />
         )}
 
-        <div className="mt-6 space-y-1" style={{ maxWidth: '46rem' }}>
+        <div className="mt-6 space-y-1" style={{ maxWidth: '46rem' }} data-testid="machines">
           {active.map((token) => (
             <div
               key={token.id}
+              data-testid={`machine-${token.name}`}
               className="flex flex-wrap items-center justify-between gap-4 py-4"
               style={{ borderBottom: '1px solid var(--line)' }}
             >
@@ -173,7 +186,11 @@ export default function Setup() {
                   {token.last_sync_at ? ` · last synced ${timeAgo(token.last_sync_at)}` : ' · never synced'}
                 </p>
               </div>
-              <button className="btn btn-danger" onClick={() => void revoke(token.id)}>
+              <button
+                className="btn btn-danger"
+                data-testid={`machine-revoke-${token.name}`}
+                onClick={() => void revoke(token.id)}
+              >
                 Revoke
               </button>
             </div>

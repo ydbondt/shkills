@@ -33,13 +33,15 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" data-testid="signin-page">
       <header className="mx-auto w-full max-w-6xl px-6 py-6">
         <Wordmark />
       </header>
 
       <div className="mx-auto grid w-full max-w-7xl flex-1 items-center gap-16 px-6 pb-24 lg:grid-cols-[1.35fr_minmax(21rem,0.75fr)]">
-        <div>
+        {/* min-w-0: without it a grid column refuses to shrink below the width
+            of the install command, and the whole page scrolls sideways on a phone. */}
+        <div className="min-w-0">
           <h1 className="t-hero rise" style={{ '--i': 0 } as React.CSSProperties}>
             Every skill
             <br />
@@ -57,13 +59,13 @@ export default function SignIn() {
 
           <div className="mt-12 rise" style={{ '--i': 2 } as React.CSSProperties}>
             <p className="t-eyebrow mb-3">Set up in one command</p>
-            <div className="terminal" style={{ maxWidth: '34rem' }}>
+            <div className="terminal" style={{ maxWidth: '34rem' }} data-testid="signin-install-command">
               <span className="text-faint">$ </span>curl -fsSL {window.location.origin}/install.sh | sh
             </div>
           </div>
         </div>
 
-        <div className="card rise p-9" style={{ '--i': 1 } as React.CSSProperties}>
+        <div className="card rise min-w-0 p-9" style={{ '--i': 1 } as React.CSSProperties}>
           <h2 className="t-title mb-1">{mode === 'signin' ? 'Sign in' : 'Create your account'}</h2>
           <p className="t-meta mb-7">
             {mode === 'signin'
@@ -71,11 +73,12 @@ export default function SignIn() {
               : 'The first account on a new Shkills becomes the administrator.'}
           </p>
 
-          <form onSubmit={submit} className="space-y-5">
+          <form onSubmit={submit} className="space-y-5" data-testid="signin-form">
             {mode === 'register' && (
               <Field label="Name">
                 <input
                   className="field"
+                  data-testid="signin-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
@@ -87,6 +90,7 @@ export default function SignIn() {
             <Field label="Email">
               <input
                 className="field"
+                data-testid="signin-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -99,6 +103,7 @@ export default function SignIn() {
             <Field label="Password" hint={mode === 'register' ? 'At least 8 characters.' : undefined}>
               <input
                 className="field"
+                data-testid="signin-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -112,6 +117,7 @@ export default function SignIn() {
               <Field label="Department">
                 <select
                   className="field"
+                  data-testid="signin-department"
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
                 >
@@ -124,15 +130,16 @@ export default function SignIn() {
               </Field>
             )}
 
-            {error && <ErrorNote message={error} />}
+            {error && <ErrorNote message={error} testId="signin-error" />}
 
-            <button className="btn btn-primary btn-lg w-full" disabled={busy}>
+            <button className="btn btn-primary btn-lg w-full" disabled={busy} data-testid="signin-submit">
               {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : 'Create account'}
             </button>
           </form>
 
           <button
             className="btn btn-quiet mt-5 w-full"
+            data-testid="signin-toggle-mode"
             onClick={() => {
               setMode(mode === 'signin' ? 'register' : 'signin');
               setError(null);

@@ -34,10 +34,26 @@ All notable changes to this project are documented here. The format follows
   SQLite file.
 - **Seed data** — a sample company with 5 people, 9 skills, 4 collections,
   linked machines and 3 proposals waiting in the review queue.
-- **Documentation** — twelve guides in [`docs/`](docs/), covering getting
+- **Documentation** — fourteen guides in [`docs/`](docs/), covering getting
   started, concepts, architecture, the portal, the CLI, skill authoring,
-  deployment, security, the API, the data model, troubleshooting and
-  development.
-- **Tests** — 62 across the three packages, including the sync engine's
+  deployment, security, the API, the data model, troubleshooting,
+  development, the acceptance criteria and how they are tested.
+- **Tests** — 67 across the three packages, including the sync engine's
   ownership rules, the hook's idempotency, and the approval workflow's state
   guards.
+- **Acceptance criteria** — [45 numbered statements](docs/acceptance-criteria.md)
+  of what Shkills promises, derived from the original brief, each recording
+  where it came from.
+- **Acceptance suite** — `packages/e2e`: 54 Cucumber scenarios covering every
+  one of those criteria, tagged `@AC-n`, run by `npm run test:e2e`. Each
+  scenario owns a server, a database, a browser context and a throwaway machine;
+  the portal is addressed only through `data-testid`, and the propagation
+  scenarios run the real CLI bundle and the literal `SessionStart` hook command
+  out of the machine's own `settings.json`. A check fails the build if a
+  criterion has no scenario, or a scenario claims one that does not exist.
+
+### Fixed
+
+- **Portal on a phone** — the sign-in page and the setup page scrolled sideways
+  at 390 px, because a grid child and the install command could not shrink below
+  their content. Found by the acceptance suite, which now checks every page.

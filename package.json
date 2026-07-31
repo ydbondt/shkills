@@ -6,7 +6,8 @@
   "workspaces": [
     "packages/server",
     "packages/cli",
-    "packages/web"
+    "packages/web",
+    "packages/e2e"
   ],
   "engines": {
     "node": ">=20"
@@ -15,6 +16,7 @@
     "build": "npm run build --workspace=@shkills/cli && npm run build --workspace=@shkills/web && npm run build --workspace=@shkills/server",
     "dev": "npm run dev --workspace=@shkills/server",
     "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run build && npm run test:e2e -w @shkills/e2e",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "seed": "npm run seed --workspace=@shkills/server",
     "start": "npm run start --workspace=@shkills/server"

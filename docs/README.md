@@ -40,6 +40,8 @@ for Claude skills.
 | [API reference](api.md) | Every endpoint, with request and response shapes |
 | [Data model](data-model.md) | The SQLite schema, table by table |
 | [Development](development.md) | Repo layout, tests, how to contribute a change |
+| [Acceptance criteria](acceptance-criteria.md) | What Shkills promises, as 45 checkable statements |
+| [End-to-end testing](e2e-testing.md) | The Cucumber suite that proves each of them |
 
 ---
 

@@ -61,14 +61,14 @@ export default function LinkDevice() {
 
   if (state === 'approved') {
     return (
-      <Centered>
+      <Centered testId="link-approved">
         <h1 className="t-display rise">Done.</h1>
         <p className="t-body-lg mt-5 rise" style={{ '--i': 1 } as React.CSSProperties}>
           {hostname ? <><strong>{hostname}</strong> is linked.</> : 'That machine is linked.'} Your
           terminal has already finished setting up — you can close this tab.
         </p>
         <div className="mt-10 rise" style={{ '--i': 2 } as React.CSSProperties}>
-          <button className="btn btn-primary btn-lg" onClick={() => navigate('/setup')}>
+          <button className="btn btn-primary btn-lg" data-testid="link-see-setup" onClick={() => navigate('/setup')}>
             See what is installed
           </button>
         </div>
@@ -78,7 +78,7 @@ export default function LinkDevice() {
 
   if (state === 'denied') {
     return (
-      <Centered>
+      <Centered testId="link-denied">
         <h1 className="t-display rise">Declined.</h1>
         <p className="t-body-lg mt-5">Nothing was linked. That request can no longer be used.</p>
       </Centered>
@@ -86,9 +86,9 @@ export default function LinkDevice() {
   }
 
   return (
-    <Centered>
+    <Centered testId="link-page">
       <p className="t-eyebrow rise">Link a machine</p>
-      <h1 className="t-display mt-4 rise" style={{ '--i': 1 } as React.CSSProperties}>
+      <h1 className="t-display mt-4 rise" data-testid="link-heading" style={{ '--i': 1 } as React.CSSProperties}>
         {hostname ? `Is this you on ${hostname}?` : 'Enter the code from your terminal.'}
       </h1>
       <p
@@ -107,6 +107,7 @@ export default function LinkDevice() {
       >
         <input
           className="field"
+          data-testid="link-code"
           value={code}
           onChange={(event) => setCode(event.target.value.toUpperCase())}
           placeholder="XXXX-XXXX"
@@ -123,15 +124,20 @@ export default function LinkDevice() {
           }}
         />
 
-        {error && <div className="mt-4"><ErrorNote message={error} /></div>}
+        {error && <div className="mt-4"><ErrorNote message={error} testId="link-error" /></div>}
 
         <div className="mt-8 flex flex-wrap gap-3">
-          <button className="btn btn-primary btn-lg" disabled={busy || code.trim().length < 9}>
+          <button
+            className="btn btn-primary btn-lg"
+            data-testid="link-approve"
+            disabled={busy || code.trim().length < 9}
+          >
             Yes, link it
           </button>
           <button
             type="button"
             className="btn btn-secondary btn-lg"
+            data-testid="link-deny"
             disabled={busy || code.trim().length < 9}
             onClick={() => void decide(false)}
           >
@@ -143,9 +149,9 @@ export default function LinkDevice() {
   );
 }
 
-function Centered({ children }: { children: React.ReactNode }) {
+function Centered({ children, testId }: { children: React.ReactNode; testId?: string }) {
   return (
-    <div className="grid min-h-[70vh] place-items-center">
+    <div className="grid min-h-[70vh] place-items-center" data-testid={testId}>
       <div style={{ maxWidth: '34rem' }}>{children}</div>
     </div>
   );

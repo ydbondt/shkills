@@ -7,6 +7,8 @@ import { useSession } from './state';
 interface NavItem {
   to: string;
   label: string;
+  /** Stable handle for tests — see docs/e2e-testing.md. */
+  id: string;
   badge?: number;
 }
 
@@ -30,16 +32,17 @@ export function Shell({ children }: { children: ReactNode }) {
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
   const items: NavItem[] = [
-    { to: '/', label: 'Skills' },
-    { to: '/collections', label: 'Collections' },
-    ...(canCurate(user) ? [{ to: '/review', label: 'Review', badge: pending }] : []),
-    { to: '/setup', label: 'Your setup' },
-    ...(canCurate(user) ? [{ to: '/people', label: 'People' }] : []),
+    { to: '/', label: 'Skills', id: 'skills' },
+    { to: '/collections', label: 'Collections', id: 'collections' },
+    ...(canCurate(user) ? [{ to: '/review', label: 'Review', id: 'review', badge: pending }] : []),
+    { to: '/setup', label: 'Your setup', id: 'setup' },
+    ...(canCurate(user) ? [{ to: '/people', label: 'People', id: 'people' }] : []),
   ];
 
   return (
     <div className="min-h-screen flex flex-col">
       <header
+        data-testid="app-header"
         className="sticky top-0 z-40"
         style={{
           background: 'color-mix(in srgb, var(--surface) 78%, transparent)',
@@ -52,18 +55,23 @@ export function Shell({ children }: { children: ReactNode }) {
             onClick={() => navigate('/')}
             className="mr-6 shrink-0"
             style={{ fontWeight: 800, letterSpacing: '-0.03em' }}
+            data-testid="nav-home"
           >
             <Wordmark />
           </button>
 
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1" data-testid="nav">
             {items.map((item) => (
               <NavItemLink key={item.to} item={item} />
             ))}
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            <button className="btn btn-primary hidden sm:inline-flex" onClick={() => navigate('/skills/new')}>
+            <button
+              className="btn btn-primary hidden sm:inline-flex"
+              onClick={() => navigate('/skills/new')}
+              data-testid="propose-skill"
+            >
               Propose a skill
             </button>
             <div className="relative">
@@ -73,6 +81,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 onClick={() => setMenuOpen((open) => !open)}
                 aria-label="Account"
                 aria-expanded={menuOpen}
+                data-testid="account-button"
               >
                 {initials(user?.name ?? '')}
               </button>
@@ -80,25 +89,35 @@ export function Shell({ children }: { children: ReactNode }) {
                 <div
                   className="card absolute right-0 mt-2 w-60 p-2 rise"
                   style={{ animationDelay: '0ms' }}
+                  data-testid="account-menu"
                 >
                   <div className="px-3 py-2">
-                    <p style={{ fontWeight: 700 }}>{user?.name}</p>
-                    <p className="t-meta">{user?.email}</p>
-                    <p className="t-meta mt-1" style={{ textTransform: 'capitalize' }}>
+                    <p style={{ fontWeight: 700 }} data-testid="account-name">
+                      {user?.name}
+                    </p>
+                    <p className="t-meta" data-testid="account-email">
+                      {user?.email}
+                    </p>
+                    <p
+                      className="t-meta mt-1"
+                      style={{ textTransform: 'capitalize' }}
+                      data-testid="account-role"
+                    >
                       {user?.role} · {user?.department}
                     </p>
                   </div>
                   <hr className="rule my-1" />
                   <div className="md:hidden">
                     {items.map((item) => (
-                      <MenuLink key={item.to} to={item.to} label={item.label} />
+                      <MenuLink key={item.to} to={item.to} label={item.label} testId={`menu-${item.id}`} />
                     ))}
                     <hr className="rule my-1" />
                   </div>
-                  <MenuLink to="/setup" label="Install on a new machine" />
+                  <MenuLink to="/setup" label="Install on a new machine" testId="menu-install" />
                   <button
                     className="w-full rounded-lg px-3 py-2 text-left"
                     style={{ fontSize: '0.9375rem' }}
+                    data-testid="sign-out"
                     onClick={() => {
                       void signOut();
                       navigate('/signin');
@@ -131,6 +150,7 @@ function NavItemLink({ item }: { item: NavItem }) {
     <NavLink
       to={item.to}
       end={item.to === '/'}
+      data-testid={`nav-${item.id}`}
       className="rounded-full px-3 py-1.5"
       style={({ isActive }) => ({
         fontSize: '0.9375rem',
@@ -144,6 +164,7 @@ function NavItemLink({ item }: { item: NavItem }) {
       {item.badge ? (
         <span
           className="ml-1.5 tnum"
+          data-testid={`nav-${item.id}-badge`}
           style={{ color: 'var(--caution)', fontWeight: 700, fontSize: '0.8rem' }}
         >
           {item.badge}
@@ -153,9 +174,14 @@ function NavItemLink({ item }: { item: NavItem }) {
   );
 }
 
-function MenuLink({ to, label }: { to: string; label: string }) {
+function MenuLink({ to, label, testId }: { to: string; label: string; testId?: string }) {
   return (
-    <NavLink to={to} className="block rounded-lg px-3 py-2" style={{ fontSize: '0.9375rem' }}>
+    <NavLink
+      to={to}
+      className="block rounded-lg px-3 py-2"
+      style={{ fontSize: '0.9375rem' }}
+      data-testid={testId}
+    >
       {label}
     </NavLink>
   );

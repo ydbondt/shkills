@@ -46,9 +46,13 @@ export default function Review() {
   const proposals = data?.proposals ?? [];
 
   return (
-    <div className="pt-16">
+    <div className="pt-16" data-testid="review-page">
       <h1 className="t-display rise">Review</h1>
-      <p className="t-body-lg mt-4 rise" style={{ maxWidth: '48ch', '--i': 1 } as React.CSSProperties}>
+      <p
+        className="t-body-lg mt-4 rise"
+        data-testid="review-summary"
+        style={{ maxWidth: '48ch', '--i': 1 } as React.CSSProperties}
+      >
         {proposals.length === 0
           ? 'Nothing is waiting on you.'
           : `${proposals.length} ${proposals.length === 1 ? 'proposal' : 'proposals'} waiting. Approving one puts it on every subscribed machine.`}
@@ -58,20 +62,27 @@ export default function Review() {
       {loading && <Spinner label="Loading the queue" />}
 
       {!loading && proposals.length === 0 && (
-        <Empty title="The queue is empty." detail="Everything proposed has been dealt with." />
+        <Empty
+          testId="review-empty"
+          title="The queue is empty."
+          detail="Everything proposed has been dealt with."
+        />
       )}
 
-      <div className="mt-12 space-y-5" style={{ maxWidth: '54rem' }}>
+      <div className="mt-12 space-y-5" style={{ maxWidth: '54rem' }} data-testid="review-queue">
         {proposals.map((proposal, index) => (
           <article
             key={proposal.versionId}
+            data-testid={`proposal-${proposal.slug}`}
             className="card rise p-8"
             style={{ '--i': Math.min(index, 8) } as React.CSSProperties}
           >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Chip>{proposal.isNewSkill ? 'new skill' : `v${proposal.version}`}</Chip>
+                  <Chip testId={`proposal-kind-${proposal.slug}`}>
+                    {proposal.isNewSkill ? 'new skill' : `v${proposal.version}`}
+                  </Chip>
                   <Chip>{proposal.category}</Chip>
                 </div>
                 <h2 className="t-title mt-3">{proposal.title}</h2>
@@ -83,12 +94,18 @@ export default function Review() {
               <div className="flex gap-2">
                 <button
                   className="btn btn-primary"
+                  data-testid={`proposal-approve-${proposal.slug}`}
                   disabled={busy}
                   onClick={() => void approve(proposal)}
                 >
                   Approve
                 </button>
-                <button className="btn btn-secondary" disabled={busy} onClick={() => setDeclining(proposal)}>
+                <button
+                  className="btn btn-secondary"
+                  data-testid={`proposal-decline-${proposal.slug}`}
+                  disabled={busy}
+                  onClick={() => setDeclining(proposal)}
+                >
                   Decline
                 </button>
               </div>
@@ -103,14 +120,20 @@ export default function Review() {
             <hr className="rule my-6" />
 
             <p className="t-eyebrow mb-2">Trigger</p>
-            <p className="text-soft">{proposal.description}</p>
+            <p className="text-soft" data-testid={`proposal-description-${proposal.slug}`}>
+              {proposal.description}
+            </p>
 
             <details className="mt-6">
-              <summary className="btn btn-quiet" style={{ paddingLeft: 0 }}>
+              <summary
+                className="btn btn-quiet"
+                data-testid={`proposal-read-${proposal.slug}`}
+                style={{ paddingLeft: 0 }}
+              >
                 Read the instructions
               </summary>
               <div className="mt-4">
-                <Markdown source={proposal.body} />
+                <Markdown source={proposal.body} testId={`proposal-body-${proposal.slug}`} />
               </div>
             </details>
 
@@ -123,12 +146,18 @@ export default function Review() {
         ))}
       </div>
 
-      <Modal open={Boolean(declining)} onClose={() => setDeclining(null)} title="Send it back">
+      <Modal
+        open={Boolean(declining)}
+        onClose={() => setDeclining(null)}
+        title="Send it back"
+        testId="decline-dialog"
+      >
         <p className="text-soft mb-5">
           {declining?.author.split(' ')[0]} will see this note. Say what would make it a yes.
         </p>
         <textarea
           className="field"
+          data-testid="decline-note"
           rows={4}
           value={note}
           onChange={(event) => setNote(event.target.value)}
@@ -136,10 +165,15 @@ export default function Review() {
           autoFocus
         />
         <div className="mt-6 flex justify-end gap-2">
-          <button className="btn btn-secondary" onClick={() => setDeclining(null)}>
+          <button className="btn btn-secondary" data-testid="decline-cancel" onClick={() => setDeclining(null)}>
             Cancel
           </button>
-          <button className="btn btn-primary" disabled={!note.trim() || busy} onClick={() => void decline()}>
+          <button
+            className="btn btn-primary"
+            data-testid="decline-submit"
+            disabled={!note.trim() || busy}
+            onClick={() => void decline()}
+          >
             Send it back
           </button>
         </div>

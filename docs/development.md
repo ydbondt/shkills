@@ -72,6 +72,13 @@ packages/
         ├── markdown.ts      Small Markdown renderer for skill bodies
         ├── components.tsx   Shared primitives
         └── pages/           One file per screen
+
+packages/e2e/                Acceptance suite — see docs/e2e-testing.md
+├── features/                Gherkin, tagged with the criterion each covers
+└── src/
+    ├── world.ts             One server, database, browser and HOME per scenario
+    ├── machine.ts           A throwaway laptop driven by the built CLI bundle
+    └── steps/               ui · cli · setup · service
 ```
 
 Two rules worth knowing before you move code around:
@@ -91,6 +98,7 @@ From the repo root:
 | ------- | ---- |
 | `npm run build` | CLI → web → server, in that order (the server serves the other two) |
 | `npm test` | Every workspace |
+| `npm run test:e2e` | Builds, then runs every acceptance criterion in a browser and a terminal |
 | `npm run typecheck` | `tsc --noEmit` across all three |
 | `npm run seed` | Sample company. Refuses a non-empty database without `--force` |
 | `npm start` | The built server |
@@ -99,7 +107,19 @@ Per workspace, add `-w @shkills/server` (or `cli` / `web`).
 
 ## Tests
 
-**62 tests** across three packages, all with vitest.
+Two layers, and they answer different questions. **67 unit and integration
+tests** (vitest) say the parts work; **54 acceptance scenarios** (Cucumber,
+[e2e testing](e2e-testing.md)) say the product does what it promised, in a real
+browser and a real terminal.
+
+```bash
+npm test          # the fast layer, seconds
+npm run test:e2e  # the slow one, about four minutes
+```
+
+### The fast layer
+
+**67 tests** across three packages, all with vitest.
 
 ```bash
 npm test
@@ -116,6 +136,7 @@ npx vitest watch -w @shkills/server
 | `cli/src/sync-engine.test.ts` | Install, update, remove, and **never touching unmarked directories** |
 | `cli/src/hook.test.ts` | Hook install, idempotency, removal, malformed settings |
 | `cli/src/bundle.test.ts` | The built bundle runs, has no runtime deps, and prints usage |
+| `server/src/cookies.test.ts` | Whether the session cookie carries `Secure`, and why the public URL decides it |
 | `web/src/markdown.test.ts` | The Markdown renderer, including escaping |
 
 Server tests use supertest against a real app instance and a real SQLite file —
@@ -129,6 +150,23 @@ happens.
 
 Anything that changes the sync engine, the hook, or the approval workflow needs a
 test. Those three are where a bug reaches every machine in the company.
+
+### The acceptance layer
+
+`packages/e2e` holds one Cucumber scenario for every criterion in
+[acceptance-criteria.md](acceptance-criteria.md), tagged `@AC-n`. Each scenario
+gets its own server, database, browser context and throwaway laptop; the portal
+is driven entirely through `data-testid`, and the machine steps run the built CLI
+bundle — including the literal `SessionStart` hook command out of the machine's
+own `settings.json`.
+
+A change in behaviour therefore usually means three edits in one commit: the
+criterion, the scenario, and the code. A build fails if the criteria and the tags
+disagree in either direction.
+
+Read [e2e testing](e2e-testing.md) before adding one — particularly the test-id
+conventions and the existing step vocabulary, which almost always covers what a
+new scenario needs.
 
 ## Adding an endpoint
 
@@ -193,7 +231,11 @@ React 19, React Router 7, Tailwind 4, Vite 6.
 - Styling is Tailwind utilities plus a small set of semantic classes in
   `styles.css` (`card`, `chip`, `btn`, `field`, `t-hero`, `t-title`, `t-meta`,
   `terminal`, `rise`). Prefer an existing class over a new pile of utilities.
-- Every page should read well at 414 px wide.
+- Every page should read well at 390 px wide, and an acceptance scenario checks
+  that none of them scrolls sideways there. If a page does, the cause is almost
+  always a grid or flex child without `min-w-0`.
+- Anything a test needs to click or read gets a `data-testid`. The conventions
+  are in [e2e testing](e2e-testing.md#the-test-id-convention).
 
 ## House style
 
@@ -207,7 +249,8 @@ React 19, React Router 7, Tailwind 4, Vite 6.
 - **Small files, clear names.** One resource per route file, one screen per page
   file.
 
-Run `npm run typecheck && npm test` before you push.
+Run `npm run typecheck && npm test` before you push, and `npm run test:e2e` if
+you touched the portal, the CLI or the sync path.
 
 ## Sending a change
 

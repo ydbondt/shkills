@@ -44,12 +44,13 @@ export default function People() {
   const s = stats.data?.stats;
 
   return (
-    <div className="pt-16">
+    <div className="pt-16" data-testid="people-page">
       <h1 className="t-display rise">People</h1>
 
       {s && (
         <div
           className="mt-10 grid gap-8 rise sm:grid-cols-2 lg:grid-cols-4"
+          data-testid="stats"
           style={{ '--i': 1 } as React.CSSProperties}
         >
           {(
@@ -60,7 +61,7 @@ export default function People() {
               [s.pending, 'waiting on review'],
             ] as const
           ).map(([value, label]) => (
-            <div key={label}>
+            <div key={label} data-testid={`stat-${label.replace(/\s+/g, '-')}`}>
               <p className="t-display tnum" style={{ fontSize: '2.75rem' }}>
                 {value}
               </p>
@@ -75,10 +76,11 @@ export default function People() {
       {people.loading && <Spinner label="Loading people" />}
       {people.error && <ErrorNote message={people.error} />}
 
-      <div className="space-y-1" style={{ maxWidth: '54rem' }}>
+      <div className="space-y-1" style={{ maxWidth: '54rem' }} data-testid="people">
         {(people.data?.users ?? []).map((person) => (
           <div
             key={person.id}
+            data-testid={`person-${person.email}`}
             className="flex flex-wrap items-center justify-between gap-4 py-4"
             style={{ borderBottom: '1px solid var(--line)' }}
           >
@@ -97,6 +99,9 @@ export default function People() {
             {user?.role === 'admin' ? (
               <select
                 className="field"
+                data-testid={`person-role-${person.email}`}
+                data-role={person.role}
+                data-editable="true"
                 style={{ width: 'auto', padding: '0.4rem 0.7rem', fontSize: '0.875rem' }}
                 value={person.role}
                 onChange={(event) => void setRole(person, event.target.value as Role)}
@@ -107,7 +112,14 @@ export default function People() {
                 <option value="admin">Admin — can manage people</option>
               </select>
             ) : (
-              <span className="chip chip-static">{person.role}</span>
+              <span
+                className="chip chip-static"
+                data-testid={`person-role-${person.email}`}
+                data-role={person.role}
+                data-editable="false"
+              >
+                {person.role}
+              </span>
             )}
           </div>
         ))}
@@ -120,9 +132,13 @@ export default function People() {
         <p className="text-soft mt-1">Every change to a skill, a collection or a person.</p>
 
         {audit.loading && <Spinner label="Loading activity" />}
-        <div className="mt-8 space-y-3" style={{ maxWidth: '54rem' }}>
+        <div className="mt-8 space-y-3" style={{ maxWidth: '54rem' }} data-testid="audit-log">
           {(audit.data?.events ?? []).map((event) => (
-            <div key={event.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <div
+              key={event.id}
+              data-testid={`audit-event-${event.action}`}
+              className="flex flex-wrap items-baseline gap-x-4 gap-y-1"
+            >
               <span className="t-meta tnum" style={{ minWidth: '5rem' }}>
                 {timeAgo(event.created_at)}
               </span>

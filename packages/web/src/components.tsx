@@ -17,14 +17,27 @@ export function Chip({
   children,
   active,
   onClick,
+  testId,
 }: {
   children: ReactNode;
   active?: boolean;
   onClick?: () => void;
+  testId?: string;
 }) {
-  if (!onClick) return <span className="chip chip-static">{children}</span>;
+  if (!onClick)
+    return (
+      <span className="chip chip-static" data-testid={testId}>
+        {children}
+      </span>
+    );
   return (
-    <button type="button" className={`chip ${active ? 'chip-on' : ''}`} onClick={onClick}>
+    <button
+      type="button"
+      className={`chip ${active ? 'chip-on' : ''}`}
+      onClick={onClick}
+      data-testid={testId}
+      data-active={active ? 'true' : 'false'}
+    >
       {children}
     </button>
   );
@@ -38,12 +51,14 @@ const STATUS_TONE: Record<string, { label: string; color: string; background: st
   draft: { label: 'Draft', color: 'var(--ink-faint)', background: 'transparent' },
 };
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status, testId }: { status: string; testId?: string }) {
   const tone = STATUS_TONE[status] ?? STATUS_TONE.draft;
   return (
     <span
       className="chip chip-static"
       style={{ color: tone.color, background: tone.background, fontWeight: 700 }}
+      data-testid={testId}
+      data-status={status}
     >
       {tone.label}
     </span>
@@ -52,7 +67,7 @@ export function StatusBadge({ status }: { status: string }) {
 
 export function Spinner({ label = 'Loading' }: { label?: string }) {
   return (
-    <div className="py-24 text-center">
+    <div className="py-24 text-center" data-testid="spinner">
       <div className="t-meta pulse-soft">{label}…</div>
     </div>
   );
@@ -62,13 +77,15 @@ export function Empty({
   title,
   detail,
   action,
+  testId,
 }: {
   title: string;
   detail?: string;
   action?: ReactNode;
+  testId?: string;
 }) {
   return (
-    <div className="py-24 text-center rise">
+    <div className="py-24 text-center rise" data-testid={testId ?? 'empty'}>
       <p className="t-subtitle">{title}</p>
       {detail && <p className="t-meta mt-2 mx-auto" style={{ maxWidth: '34ch' }}>{detail}</p>}
       {action && <div className="mt-6">{action}</div>}
@@ -76,9 +93,14 @@ export function Empty({
   );
 }
 
-export function ErrorNote({ message }: { message: string }) {
+export function ErrorNote({ message, testId }: { message: string; testId?: string }) {
   return (
-    <p className="t-meta" style={{ color: 'var(--negative)' }} role="alert">
+    <p
+      className="t-meta"
+      style={{ color: 'var(--negative)' }}
+      role="alert"
+      data-testid={testId ?? 'error'}
+    >
       {message}
     </p>
   );
@@ -108,11 +130,13 @@ export function Modal({
   onClose,
   title,
   children,
+  testId,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  testId?: string;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -141,6 +165,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        data-testid={testId ?? 'modal'}
       >
         <h2 className="t-title mb-5">{title}</h2>
         {children}
@@ -153,12 +178,14 @@ export function Toasts() {
   const { toasts, dismiss } = useToast();
   if (toasts.length === 0) return null;
   return (
-    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 space-y-2">
+    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 space-y-2" data-testid="toasts">
       {toasts.map((toast) => (
         <button
           key={toast.id}
           onClick={() => dismiss(toast.id)}
           className="card rise block px-5 py-3 text-left"
+          data-testid="toast"
+          data-tone={toast.tone}
           style={{
             color:
               toast.tone === 'negative'
@@ -177,12 +204,21 @@ export function Toasts() {
   );
 }
 
-export function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
+export function CopyButton({
+  text,
+  label = 'Copy',
+  testId,
+}: {
+  text: string;
+  label?: string;
+  testId?: string;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <button
       type="button"
       className="btn btn-secondary"
+      data-testid={testId}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
@@ -203,8 +239,14 @@ export function CopyButton({ text, label = 'Copy' }: { text: string; label?: str
  * colleagues, not attackers, but they still go through escaping first — and a
  * hand-rolled subset keeps a parser dependency out of the bundle.
  */
-export function Markdown({ source }: { source: string }) {
-  return <div className="prose" dangerouslySetInnerHTML={{ __html: renderMarkdown(source) }} />;
+export function Markdown({ source, testId }: { source: string; testId?: string }) {
+  return (
+    <div
+      className="prose"
+      data-testid={testId}
+      dangerouslySetInnerHTML={{ __html: renderMarkdown(source) }}
+    />
+  );
 }
 
 export function timeAgo(iso: string): string {

@@ -76,21 +76,25 @@ export default function SkillDetail() {
   }
 
   return (
-    <div className="pt-12">
-      <Link to="/" className="t-meta">
+    <div className="pt-12" data-testid="skill-detail" data-slug={skill.slug}>
+      <Link to="/" className="t-meta" data-testid="back-to-skills">
         ← All skills
       </Link>
 
       <header className="mt-6 flex flex-wrap items-start justify-between gap-6 rise">
         <div style={{ maxWidth: '44rem' }}>
           <div className="flex flex-wrap items-center gap-2">
-            <Chip>{live?.category ?? 'unpublished'}</Chip>
-            {skill.archived && <Chip>archived</Chip>}
-            {live && <StatusBadge status="approved" />}
+            <Chip testId="skill-category">{live?.category ?? 'unpublished'}</Chip>
+            {skill.archived && <Chip testId="skill-archived">archived</Chip>}
+            {live && <StatusBadge status="approved" testId="skill-status" />}
           </div>
-          <h1 className="t-display mt-4">{live?.title ?? skill.slug}</h1>
-          <p className="t-body-lg mt-4">{live?.description}</p>
-          <p className="t-meta mt-5">
+          <h1 className="t-display mt-4" data-testid="skill-title">
+            {live?.title ?? skill.slug}
+          </h1>
+          <p className="t-body-lg mt-4" data-testid="skill-description">
+            {live?.description}
+          </p>
+          <p className="t-meta mt-5" data-testid="skill-meta">
             <code style={{ fontFamily: 'var(--font-mono)' }}>{skill.slug}</code> · kept by{' '}
             {skill.owner} · updated {timeAgo(skill.updatedAt)}
             {live && ` · v${live.version}`}
@@ -102,20 +106,30 @@ export default function SkillDetail() {
             <button
               className={skill.subscribed ? 'btn btn-secondary' : 'btn btn-primary'}
               onClick={() => void toggleSubscription()}
+              data-testid="skill-subscribe"
+              data-subscribed={skill.subscribed ? 'true' : 'false'}
             >
               {skill.subscribed ? 'Installed' : 'Add to my Claude'}
             </button>
           )}
-          <button className="btn btn-secondary" onClick={() => navigate(`/skills/${skill.slug}/edit`)}>
+          <button
+            className="btn btn-secondary"
+            data-testid="skill-edit"
+            onClick={() => navigate(`/skills/${skill.slug}/edit`)}
+          >
             {canCurate(user) ? 'Edit' : 'Propose a change'}
           </button>
           {canCurate(user) &&
             (skill.archived ? (
-              <button className="btn btn-quiet" onClick={() => void restore()}>
+              <button className="btn btn-quiet" data-testid="skill-restore" onClick={() => void restore()}>
                 Restore
               </button>
             ) : (
-              <button className="btn btn-danger" onClick={() => setConfirmArchive(true)}>
+              <button
+                className="btn btn-danger"
+                data-testid="skill-archive"
+                onClick={() => setConfirmArchive(true)}
+              >
                 Archive
               </button>
             ))}
@@ -123,12 +137,16 @@ export default function SkillDetail() {
       </header>
 
       {skill.collections.length > 0 && (
-        <p className="t-meta mt-6">
+        <p className="t-meta mt-6" data-testid="skill-collections">
           In{' '}
           {skill.collections.map((collection, index) => (
             <span key={collection.slug}>
               {index > 0 && ', '}
-              <Link to={`/collections/${collection.slug}`} className="accent">
+              <Link
+                to={`/collections/${collection.slug}`}
+                className="accent"
+                data-testid={`skill-collection-${collection.slug}`}
+              >
                 {collection.name}
               </Link>
             </span>
@@ -147,6 +165,7 @@ export default function SkillDetail() {
           <button
             key={key}
             onClick={() => setTab(key)}
+            data-testid={`tab-${key}`}
             className="px-4 py-3"
             style={{
               fontSize: '0.9375rem',
@@ -164,9 +183,9 @@ export default function SkillDetail() {
       <div className="py-10">
         {tab === 'skill' &&
           (live ? (
-            <Markdown source={live.body} />
+            <Markdown source={live.body} testId="skill-body" />
           ) : (
-            <p className="t-body-lg">
+            <p className="t-body-lg" data-testid="skill-body-unpublished">
               Nothing is published yet. The first version is still in review.
             </p>
           ))}
@@ -178,26 +197,27 @@ export default function SkillDetail() {
                 Written to <code>~/.claude/skills/{skill.slug}/SKILL.md</code> on every machine that
                 has this skill.
               </p>
-              <CopyButton text={live.renderedMd} />
+              <CopyButton text={live.renderedMd} testId="skill-file-copy" />
             </div>
-            <pre className="terminal" style={{ whiteSpace: 'pre-wrap' }}>
+            <pre className="terminal" style={{ whiteSpace: 'pre-wrap' }} data-testid="skill-file">
               {live.renderedMd}
             </pre>
           </div>
         )}
 
         {tab === 'history' && (
-          <ol className="space-y-3" style={{ maxWidth: '52rem' }}>
+          <ol className="space-y-3" style={{ maxWidth: '52rem' }} data-testid="skill-history">
             {skill.versions.map((version, index) => (
               <li
                 key={version.id}
+                data-testid={`version-${version.version}`}
                 className="card rise p-6"
                 style={{ '--i': Math.min(index, 8) } as React.CSSProperties}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="t-subtitle tnum">v{version.version}</span>
-                    <StatusBadge status={version.status} />
+                    <StatusBadge status={version.status} testId={`version-status-${version.version}`} />
                   </div>
                   <span className="t-meta">
                     {version.author} · {timeAgo(version.createdAt)}
@@ -207,7 +227,7 @@ export default function SkillDetail() {
                 {version.changeNote && <p className="mt-3 text-soft">{version.changeNote}</p>}
 
                 {version.reviewNote && (
-                  <p className="t-meta mt-2">
+                  <p className="t-meta mt-2" data-testid={`version-review-note-${version.version}`}>
                     {version.status === 'rejected' ? 'Declined' : 'Reviewed'} by {version.reviewer}:{' '}
                     {version.reviewNote}
                   </p>
@@ -218,6 +238,7 @@ export default function SkillDetail() {
                   !skill.archived && (
                     <button
                       className="btn btn-quiet mt-3"
+                      data-testid={`rollback-${version.version}`}
                       style={{ paddingLeft: 0 }}
                       onClick={() => void rollback(version.id, version.version)}
                     >
@@ -230,16 +251,25 @@ export default function SkillDetail() {
         )}
       </div>
 
-      <Modal open={confirmArchive} onClose={() => setConfirmArchive(false)} title="Archive this skill?">
+      <Modal
+        open={confirmArchive}
+        onClose={() => setConfirmArchive(false)}
+        title="Archive this skill?"
+        testId="archive-dialog"
+      >
         <p className="text-soft">
           It disappears from every machine that has it, at the start of their next Claude session.
           The history stays here, and a curator can restore it.
         </p>
         <div className="mt-7 flex justify-end gap-2">
-          <button className="btn btn-secondary" onClick={() => setConfirmArchive(false)}>
+          <button
+            className="btn btn-secondary"
+            data-testid="archive-cancel"
+            onClick={() => setConfirmArchive(false)}
+          >
             Keep it
           </button>
-          <button className="btn btn-primary" onClick={() => void archive()}>
+          <button className="btn btn-primary" data-testid="archive-confirm" onClick={() => void archive()}>
             Archive
           </button>
         </div>

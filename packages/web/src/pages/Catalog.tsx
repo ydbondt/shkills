@@ -50,13 +50,17 @@ export default function Catalog() {
   }
 
   return (
-    <div>
+    <div data-testid="catalog-page">
       <section className="pt-16 pb-10">
         <h1 className="t-display rise" style={{ maxWidth: '18ch' }}>
           The skills your company runs on.
         </h1>
         {stats.data && (
-          <p className="t-body-lg mt-5 rise" style={{ '--i': 1 } as React.CSSProperties}>
+          <p
+            className="t-body-lg mt-5 rise"
+            data-testid="catalog-stats"
+            style={{ '--i': 1 } as React.CSSProperties}
+          >
             {stats.data.stats.skills} live · {stats.data.stats.collections} collections ·{' '}
             {stats.data.stats.linkedDevices}{' '}
             {stats.data.stats.linkedDevices === 1 ? 'machine' : 'machines'} in sync
@@ -75,6 +79,7 @@ export default function Catalog() {
         <div className="flex flex-wrap items-center gap-3">
           <input
             className="field"
+            data-testid="catalog-search"
             style={{ maxWidth: '22rem' }}
             placeholder="Search skills"
             value={query}
@@ -82,18 +87,23 @@ export default function Catalog() {
             aria-label="Search skills"
           />
           <div className="flex flex-wrap items-center gap-1.5">
-            <Chip active={!category && !mineOnly} onClick={() => {
-              setCategory(null);
-              setMineOnly(false);
-            }}>
+            <Chip
+              testId="filter-all"
+              active={!category && !mineOnly}
+              onClick={() => {
+                setCategory(null);
+                setMineOnly(false);
+              }}
+            >
               All
             </Chip>
-            <Chip active={mineOnly} onClick={() => setMineOnly((value) => !value)}>
+            <Chip testId="filter-mine" active={mineOnly} onClick={() => setMineOnly((value) => !value)}>
               Mine
             </Chip>
             {(facets.data?.categories ?? []).map((name) => (
               <Chip
                 key={name}
+                testId={`filter-category-${name}`}
                 active={category === name}
                 onClick={() => setCategory(category === name ? null : name)}
               >
@@ -109,6 +119,7 @@ export default function Catalog() {
 
       {!skills.loading && visible.length === 0 && (
         <Empty
+          testId="catalog-empty"
           title={query || category || mineOnly ? 'Nothing matches that.' : 'No skills yet.'}
           detail={
             query || category || mineOnly
@@ -123,19 +134,21 @@ export default function Catalog() {
         />
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="catalog-grid">
         {visible.map((skill, index) => (
           <article
             key={skill.id}
+            data-testid={`skill-card-${skill.slug}`}
             className="card card-interactive rise flex flex-col p-6"
             style={{ '--i': Math.min(index, 8) } as React.CSSProperties}
           >
-            <Link to={`/skills/${skill.slug}`} className="flex-1">
+            <Link to={`/skills/${skill.slug}`} className="flex-1" data-testid={`skill-link-${skill.slug}`}>
               <div className="flex items-start justify-between gap-3">
                 <h2 className="t-subtitle">{skill.title}</h2>
                 {skill.pendingCount > 0 && canCurate(user) && (
                   <span
                     className="t-meta shrink-0"
+                    data-testid={`skill-in-review-${skill.slug}`}
                     style={{ color: 'var(--caution)', fontWeight: 700 }}
                   >
                     {skill.pendingCount} in review
@@ -155,20 +168,22 @@ export default function Catalog() {
                 {skill.description}
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-1.5">
-                <Chip>{skill.category}</Chip>
-                {!skill.published && <Chip>not published</Chip>}
-                {skill.archived && <Chip>archived</Chip>}
+                <Chip testId={`skill-category-${skill.slug}`}>{skill.category}</Chip>
+                {!skill.published && <Chip testId={`skill-unpublished-${skill.slug}`}>not published</Chip>}
+                {skill.archived && <Chip testId={`skill-archived-${skill.slug}`}>archived</Chip>}
               </div>
             </Link>
 
             <div className="mt-5 flex items-center justify-between gap-2">
-              <span className="t-meta tnum">
+              <span className="t-meta tnum" data-testid={`skill-version-${skill.slug}`}>
                 {skill.published ? `v${skill.version}` : 'draft'} · {timeAgo(skill.updatedAt)}
               </span>
               {skill.published && !skill.archived && (
                 <button
                   className={skill.subscribed ? 'btn btn-secondary' : 'btn btn-primary'}
                   onClick={() => void toggle(skill)}
+                  data-testid={`skill-subscribe-${skill.slug}`}
+                  data-subscribed={skill.subscribed ? 'true' : 'false'}
                   style={{ fontSize: '0.85rem', padding: '0.42rem 0.95rem' }}
                 >
                   {skill.subscribed ? 'Installed' : 'Add'}

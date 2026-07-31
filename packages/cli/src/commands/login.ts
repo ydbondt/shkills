@@ -21,6 +21,16 @@ interface TokenResponse {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * The name this machine announces when it asks to be linked. It is what you
+ * see in the portal next to "Is this you on …?", so being able to override it
+ * matters on machines whose hostname says nothing useful — containers, shared
+ * build boxes — and lets the acceptance suite link several machines at once.
+ */
+function machineName(): string {
+  return process.env.SHKILLS_HOSTNAME || os.hostname();
+}
+
 export async function login(args: { host?: string; token?: string }): Promise<void> {
   const config = loadConfig();
   if (args.host) config.host = args.host.replace(/\/+$/, '');
@@ -42,7 +52,7 @@ export async function login(args: { host?: string; token?: string }): Promise<vo
 
   const start = await api<DeviceCodeResponse>('/api/v1/device/code', {
     method: 'POST',
-    body: { hostname: os.hostname() },
+    body: { hostname: machineName() },
     anonymous: true,
   });
 

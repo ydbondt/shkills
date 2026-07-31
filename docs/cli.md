@@ -254,6 +254,7 @@ Nothing else on your machine is modified, ever.
 | `SHKILLS_HOME` | Where config and state live. Default `~/.shkills`. |
 | `SHKILLS_HOST` | Overrides the recorded server URL. |
 | `SHKILLS_TOKEN` | Overrides the stored device token. |
+| `SHKILLS_HOSTNAME` | The name this machine announces when linking — what the portal shows next to "Is this you on …?". Defaults to the system hostname; worth setting on a container or a shared build box. |
 | `CLAUDE_CONFIG_DIR` | Where Claude's config lives. Default `~/.claude`. Honoured by Claude Code too. |
 | `NO_COLOR` | Disables colour. Colour is also off automatically when stdout is not a TTY. |
 

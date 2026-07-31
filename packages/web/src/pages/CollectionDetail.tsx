@@ -67,17 +67,19 @@ export default function CollectionDetail() {
   }
 
   return (
-    <div className="pt-12">
-      <Link to="/collections" className="t-meta">
+    <div className="pt-12" data-testid="collection-detail" data-slug={collection.slug}>
+      <Link to="/collections" className="t-meta" data-testid="back-to-collections">
         ← All collections
       </Link>
 
       <header className="mt-6 flex flex-wrap items-start justify-between gap-6 rise">
         <div style={{ maxWidth: '44rem' }}>
-          {collection.isDefault && <Chip>installed for everyone</Chip>}
-          <h1 className="t-display mt-3">{collection.name}</h1>
+          {collection.isDefault && <Chip testId="collection-default">installed for everyone</Chip>}
+          <h1 className="t-display mt-3" data-testid="collection-title">
+            {collection.name}
+          </h1>
           <p className="t-body-lg mt-4">{collection.description}</p>
-          <p className="t-meta mt-4 tnum">
+          <p className="t-meta mt-4 tnum" data-testid="collection-count">
             {collection.skills.length} {collection.skills.length === 1 ? 'skill' : 'skills'}
           </p>
         </div>
@@ -86,12 +88,14 @@ export default function CollectionDetail() {
             <button
               className={collection.subscribed ? 'btn btn-secondary' : 'btn btn-primary'}
               onClick={() => void toggleJoin()}
+              data-testid="collection-join"
+              data-subscribed={collection.subscribed ? 'true' : 'false'}
             >
               {collection.subscribed ? 'Joined' : 'Join'}
             </button>
           )}
           {canCurate(user) && (
-            <button className="btn btn-secondary" onClick={() => setAdding(true)}>
+            <button className="btn btn-secondary" data-testid="collection-add-skill" onClick={() => setAdding(true)}>
               Add a skill
             </button>
           )}
@@ -100,19 +104,21 @@ export default function CollectionDetail() {
 
       {collection.skills.length === 0 && (
         <Empty
+          testId="collection-empty"
           title="Nothing in here yet."
           detail="Add the skills that belong together, and people join once instead of many times."
         />
       )}
 
-      <div className="mt-12 space-y-3" style={{ maxWidth: '52rem' }}>
+      <div className="mt-12 space-y-3" style={{ maxWidth: '52rem' }} data-testid="collection-skills">
         {collection.skills.map((skill, index) => (
           <div
             key={skill.id}
+            data-testid={`collection-skill-${skill.slug}`}
             className="card rise flex items-start gap-5 p-6"
             style={{ '--i': Math.min(index, 8) } as React.CSSProperties}
           >
-            <Link to={`/skills/${skill.slug}`} className="flex-1">
+            <Link to={`/skills/${skill.slug}`} className="flex-1" data-testid={`skill-link-${skill.slug}`}>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="t-subtitle">{skill.title}</h2>
                 {!skill.published && <Chip>not published</Chip>}
@@ -123,7 +129,11 @@ export default function CollectionDetail() {
               </p>
             </Link>
             {canCurate(user) && (
-              <button className="btn btn-danger" onClick={() => void removeSkill(skill.slug)}>
+              <button
+                className="btn btn-danger"
+                data-testid={`collection-remove-${skill.slug}`}
+                onClick={() => void removeSkill(skill.slug)}
+              >
                 Remove
               </button>
             )}
@@ -181,19 +191,25 @@ function AddSkill({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add a skill">
+    <Modal open={open} onClose={onClose} title="Add a skill" testId="add-skill-dialog">
       <input
         className="field"
+        data-testid="add-skill-search"
         placeholder="Search"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         autoFocus
       />
-      <div className="mt-4 max-h-80 space-y-1 overflow-y-auto">
-        {candidates.length === 0 && <p className="t-meta py-6 text-center">Nothing left to add.</p>}
+      <div className="mt-4 max-h-80 space-y-1 overflow-y-auto" data-testid="add-skill-options">
+        {candidates.length === 0 && (
+          <p className="t-meta py-6 text-center" data-testid="add-skill-empty">
+            Nothing left to add.
+          </p>
+        )}
         {candidates.map((skill) => (
           <button
             key={skill.id}
+            data-testid={`add-skill-${skill.slug}`}
             className="w-full rounded-xl px-4 py-3 text-left"
             style={{ transition: 'background 0.18s var(--ease)' }}
             onMouseEnter={(event) => (event.currentTarget.style.background = 'var(--surface-sunken)')}

@@ -134,12 +134,12 @@ export default function SkillEditor() {
   if (loading) return <p className="t-meta pulse-soft pt-24">Loading…</p>;
 
   return (
-    <div className="pt-12 pb-16">
-      <button className="t-meta" onClick={() => navigate(-1)}>
+    <div className="pt-12 pb-16" data-testid="editor-page" data-mode={editing ? 'edit' : 'new'}>
+      <button className="t-meta" data-testid="editor-back" onClick={() => navigate(-1)}>
         ← Back
       </button>
 
-      <h1 className="t-display mt-6 rise">
+      <h1 className="t-display mt-6 rise" data-testid="editor-heading">
         {editing ? 'Propose a change' : 'Write a skill'}
       </h1>
       <p className="t-body-lg mt-4 rise" style={{ maxWidth: '52ch', '--i': 1 } as React.CSSProperties}>
@@ -156,6 +156,7 @@ export default function SkillEditor() {
           <Field label="Title">
             <input
               className="field"
+              data-testid="editor-title"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="Code Review Standards"
@@ -169,6 +170,7 @@ export default function SkillEditor() {
           >
             <input
               className="field"
+              data-testid="editor-slug"
               style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}
               value={form.slug}
               onChange={(e) => {
@@ -186,6 +188,7 @@ export default function SkillEditor() {
           >
             <textarea
               className="field"
+              data-testid="editor-description"
               rows={3}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -198,17 +201,23 @@ export default function SkillEditor() {
           <div>
             <div className="mb-2 flex items-center justify-between">
               <span className="t-eyebrow">Instructions</span>
-              <button type="button" className="btn btn-quiet" onClick={() => setPreview(!preview)}>
+              <button
+                type="button"
+                className="btn btn-quiet"
+                data-testid="editor-preview-toggle"
+                onClick={() => setPreview(!preview)}
+              >
                 {preview ? 'Edit' : 'Preview'}
               </button>
             </div>
             {preview ? (
               <div className="card p-7" style={{ minHeight: '26rem' }}>
-                <Markdown source={form.body} />
+                <Markdown source={form.body} testId="editor-preview" />
               </div>
             ) : (
               <textarea
                 className="field"
+                data-testid="editor-body"
                 style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', lineHeight: 1.7 }}
                 rows={22}
                 value={form.body}
@@ -223,16 +232,17 @@ export default function SkillEditor() {
           <Field label={editing ? 'What changed, and why?' : 'Note for the reviewer'}>
             <input
               className="field"
+              data-testid="editor-change-note"
               value={form.changeNote}
               onChange={(e) => setForm({ ...form, changeNote: e.target.value })}
               placeholder={editing ? 'Added the rule about blocking comments' : 'Initial version'}
             />
           </Field>
 
-          {error && <ErrorNote message={error} />}
+          {error && <ErrorNote message={error} testId="editor-error" />}
 
           <div className="flex flex-wrap gap-2">
-            <button className="btn btn-primary btn-lg" disabled={busy}>
+            <button className="btn btn-primary btn-lg" disabled={busy} data-testid="editor-submit">
               {busy
                 ? 'Saving…'
                 : curator
@@ -246,6 +256,7 @@ export default function SkillEditor() {
                 type="button"
                 className="btn btn-secondary btn-lg"
                 disabled={busy}
+                data-testid="editor-send-for-review"
                 onClick={(event) => void submit(event, true)}
               >
                 Send for review instead
@@ -258,6 +269,7 @@ export default function SkillEditor() {
           <Field label="Category">
             <select
               className="field"
+              data-testid="editor-category"
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
             >
@@ -275,6 +287,7 @@ export default function SkillEditor() {
               {AUDIENCES.map((audience) => (
                 <Chip
                   key={audience}
+                  testId={`editor-audience-${audience}`}
                   active={form.audiences.includes(audience)}
                   onClick={() =>
                     setForm({
@@ -294,6 +307,7 @@ export default function SkillEditor() {
           <Field label="Tags" hint="Comma separated.">
             <input
               className="field"
+              data-testid="editor-tags"
               value={form.tags}
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
               placeholder="git, conventions"
@@ -304,6 +318,7 @@ export default function SkillEditor() {
             <input
               type="checkbox"
               className="mt-1"
+              data-testid="editor-user-invocable"
               checked={form.userInvocable}
               onChange={(e) => setForm({ ...form, userInvocable: e.target.checked })}
             />

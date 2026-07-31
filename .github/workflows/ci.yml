@@ -53,6 +53,37 @@ jobs:
           curl -fsS http://localhost:4000/install.sh  | grep -q 'Shkills installer'
           curl -fsS http://localhost:4000/cli/version | grep -q sha256
 
+  e2e:
+    name: Acceptance criteria
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      # Only Chromium: the suite is about behaviour, not about rendering
+      # differences between engines.
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Every acceptance criterion, end to end
+        run: npm run test:e2e
+
+      # The report carries a screenshot and the server log for anything that
+      # failed, which is the difference between a re-run and a diagnosis.
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: packages/e2e/reports/
+          retention-days: 7
+
   docker:
     name: Docker image builds
     runs-on: ubuntu-latest

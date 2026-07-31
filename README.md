@@ -11,9 +11,10 @@ remember.**
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-5FA04E?logo=node.js&logoColor=white)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/typescript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-62%20passing-4ade80)](docs/development.md#tests)
+[![Tests](https://img.shields.io/badge/tests-67%20passing-4ade80)](docs/development.md#tests)
+[![Acceptance](https://img.shields.io/badge/acceptance-45%20criteria-4ade80)](docs/acceptance-criteria.md)
 [![Self-hosted](https://img.shields.io/badge/self--hosted-one%20container-111)](docs/deployment.md)
-[![Docs](https://img.shields.io/badge/docs-12%20guides-blue)](docs/)
+[![Docs](https://img.shields.io/badge/docs-14%20guides-blue)](docs/)
 
 [**Documentation**](docs/) · [Quick start](#quick-start) · [How it works](#how-it-works) ·
 [Deploy it](docs/deployment.md) · [API](docs/api.md)
@@ -337,6 +338,8 @@ kubeconfig in this public repo.
 | [Data model](docs/data-model.md) | The SQLite schema, table by table |
 | [Troubleshooting](docs/troubleshooting.md) | When something looks wrong |
 | [Development](docs/development.md) | Repo layout, tests, house style |
+| [Acceptance criteria](docs/acceptance-criteria.md) | What this promises, as 45 checkable statements |
+| [End-to-end testing](docs/e2e-testing.md) | The Cucumber suite that proves each of them |
 
 ---
 
@@ -346,12 +349,20 @@ kubeconfig in this public repo.
 packages/server   Express 5 + SQLite (WAL). API, approval workflow, sync, install.sh
 packages/cli      The bundled CLI. One file, no runtime dependencies
 packages/web      React 19 + Vite 6 + Tailwind 4 portal
+packages/e2e      Cucumber acceptance suite — a real browser and a real terminal
 ```
 
 ```bash
-npm test          # 62 tests across all three packages
+npm test          # 67 unit and integration tests across the three packages
+npm run test:e2e  # 54 Cucumber scenarios — one per acceptance criterion
 npm run typecheck
 ```
+
+The second one is the interesting layer: it starts a real server, drives a real
+browser and links a real (throwaway) machine, then publishes a change in the
+portal and checks that the file on that machine changed. See
+[acceptance criteria](docs/acceptance-criteria.md) for what is promised and
+[end-to-end testing](docs/e2e-testing.md) for how it is proved.
 
 A few decisions worth knowing about:
 
@@ -372,7 +383,9 @@ A few decisions worth knowing about:
 
 Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 Anything touching the sync engine, the hook, or the approval workflow needs a
-test; those three are where a bug reaches every machine in the company.
+test; those three are where a bug reaches every machine in the company. New
+behaviour also needs a line in [the acceptance criteria](docs/acceptance-criteria.md)
+and a scenario that claims it.
 
 ## License
 

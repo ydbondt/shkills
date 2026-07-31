@@ -19,3 +19,6 @@ packages/server/public/
 kubeconfig*
 deploy/k8s/*secret*.yaml
 !deploy/k8s/60-runner.yaml
+
+# Cucumber HTML reports from the acceptance suite
+packages/e2e/reports/
