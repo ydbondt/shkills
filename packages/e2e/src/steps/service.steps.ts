@@ -29,6 +29,12 @@ When(
   },
 );
 
+Then('there is no skill called {string}', async function (this: ShkillsWorld, slug: string) {
+  const api = await this.as(this.curatorEmail());
+  const attempt = await api.attempt('GET', `/v1/skills/${slug}`);
+  assert.equal(attempt.status, 404, `"${slug}" exists after all`);
+});
+
 Then('the server refuses, saying {string}', function (this: ShkillsWorld, expected: string) {
   const attempt = this.lastApiAttempt;
   assert.ok(attempt, 'nothing was attempted in this scenario');

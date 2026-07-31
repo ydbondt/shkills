@@ -67,3 +67,4 @@ Feature: Writing a skill
     And I click "editor-submit"
     Then I see "editor-page"
     And I do not see "skill-detail"
+    And there is no skill called "half-a-skill"
