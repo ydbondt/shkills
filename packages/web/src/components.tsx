@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useToast } from './state';
 import { renderMarkdown } from './markdown';
+import { copyText } from './clipboard';
 
 export function Wordmark({ size = 'md' }: { size?: 'md' | 'lg' }) {
   return (
@@ -213,23 +214,25 @@ export function CopyButton({
   label?: string;
   testId?: string;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
   return (
     <button
       type="button"
       className="btn btn-secondary"
       data-testid={testId}
+      data-copy-state={state}
+      title={
+        state === 'failed'
+          ? 'This browser would not let the page copy for you — select the text and copy it yourself.'
+          : undefined
+      }
       onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1800);
-        } catch {
-          setCopied(false);
-        }
+        const ok = await copyText(text);
+        setState(ok ? 'copied' : 'failed');
+        setTimeout(() => setState('idle'), ok ? 1800 : 4000);
       }}
     >
-      {copied ? 'Copied' : label}
+      {state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy it yourself' : label}
     </button>
   );
 }
