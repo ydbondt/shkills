@@ -1,0 +1,98 @@
+name: Deploy
+
+# Build on GitHub's runners, deploy from a runner inside the cluster.
+#
+# The cluster has no inbound access from the internet, so there is no kubeconfig
+# anywhere in this repo or in Actions secrets — the `k3s` runner lives in the
+# `shkills` namespace and authenticates with its own ServiceAccount. See
+# deploy/k8s/60-runner.yaml.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Never let two deploys race for the same single-replica Deployment.
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/ydbondt/shkills
+
+jobs:
+  build:
+    name: Build and push image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out the image tag
+        id: meta
+        run: echo "tag=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      # The built-in GITHUB_TOKEN is enough to push to this repo's own package.
+      # No PAT, so there is no long-lived registry credential to leak.
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          # Immutable SHA tag is what actually gets deployed; :latest is a
+          # convenience pointer for humans and `docker compose`.
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Roll out to k3s
+    needs: build
+    runs-on: [self-hosted, shkills]
+    steps:
+      - uses: azure/setup-kubectl@v4
+
+      - name: Roll out ${{ needs.build.outputs.tag }}
+        run: |
+          set -euo pipefail
+          kubectl -n shkills set image deployment/shkills \
+            shkills="$IMAGE:${{ needs.build.outputs.tag }}"
+
+          # If the new image does not become ready, put the previous one back
+          # rather than leaving the portal down overnight.
+          if ! kubectl -n shkills rollout status deployment/shkills --timeout=180s; then
+            echo "::error::Rollout failed — rolling back."
+            kubectl -n shkills describe pods -l app=shkills | tail -40 || true
+            kubectl -n shkills logs -l app=shkills --tail=80 --all-containers || true
+            kubectl -n shkills rollout undo deployment/shkills
+            kubectl -n shkills rollout status deployment/shkills --timeout=180s || true
+            exit 1
+          fi
+
+      - name: Check the deployed portal actually answers
+        run: |
+          set -euo pipefail
+          # Reached through the Service from inside the cluster network.
+          for _ in $(seq 1 30); do
+            if curl -fsS http://shkills.shkills.svc.cluster.local:4000/api/health \
+                 | grep -q '"ok":true'; then
+              echo "Health check passed."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::Deployed pod is ready but /api/health never answered."
+          exit 1

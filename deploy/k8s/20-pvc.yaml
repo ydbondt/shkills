@@ -1,0 +1,14 @@
+# The SQLite database and the generated JWT secret fallback live here.
+# One replica only — SQLite is a single-writer store and the volume is RWO.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shkills-data
+  namespace: shkills
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

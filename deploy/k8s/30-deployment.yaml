@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shkills
+  namespace: shkills
+  labels:
+    app: shkills
+spec:
+  replicas: 1
+  # Recreate, not RollingUpdate: the store is SQLite on a ReadWriteOnce volume.
+  # Two pods writing the same database file is the one thing to avoid here, and
+  # a rolling update would deliberately run both at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: shkills
+  template:
+    metadata:
+      labels:
+        app: shkills
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      securityContext:
+        # The image's data dir is a mounted volume; fsGroup makes it writable
+        # by the unprivileged user without a chown in an init container.
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: shkills
+          # CI replaces this tag with the commit SHA via `kubectl set image`,
+          # so a running deployment always records which commit it is serving.
+          image: ghcr.io/ydbondt/shkills:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: '4000'
+            - name: SHKILLS_DATA_DIR
+              value: /data
+            - name: SHKILLS_PUBLIC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: shkills-config
+                  key: SHKILLS_PUBLIC_URL
+            # Not in this repo. `kubectl create secret generic shkills-secrets …`
+            # — see deploy/k8s/README.md. Changing it signs everybody out.
+            - name: SHKILLS_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shkills-secrets
+                  key: SHKILLS_JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: shkills-data
+        - name: tmp
+          emptyDir: {}

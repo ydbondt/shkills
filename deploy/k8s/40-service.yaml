@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: shkills
+  namespace: shkills
+  labels:
+    app: shkills
+spec:
+  # NodePort rather than ClusterIP because this is currently the only way the
+  # portal is reachable: `shkills.biyou.internal` has no DNS record yet, so the
+  # Ingress below cannot be used until someone adds one.
+  type: NodePort
+  selector:
+    app: shkills
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http
+      nodePort: 31400

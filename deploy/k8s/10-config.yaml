@@ -1,0 +1,16 @@
+# Non-secret configuration. Secrets live in the `shkills-secrets` Secret, which
+# is created out-of-band and is deliberately not in this repo — see README.md.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shkills-config
+  namespace: shkills
+data:
+  # The URL people actually reach the portal on. This is not cosmetic: it is
+  # baked into /install.sh, into the install command the portal shows, and into
+  # the device-link URL the CLI prints. If it is wrong, onboarding breaks.
+  #
+  # The NodePort URL is what works today. `shkills.biyou.internal` has no DNS
+  # record yet; once it does, change this to http://shkills.biyou.internal and
+  # `kubectl rollout restart deployment/shkills -n shkills`.
+  SHKILLS_PUBLIC_URL: 'http://192.168.83.16:31400'

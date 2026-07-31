@@ -1,0 +1,29 @@
+# Host-based route through the cluster's Traefik.
+#
+# This does nothing until `shkills.biyou.internal` resolves to the node
+# (192.168.83.16). It is applied anyway so the routing is ready the moment a DNS
+# record exists — at which point update SHKILLS_PUBLIC_URL in 10-config.yaml.
+#
+# Until then, reach the portal on the NodePort, or test this rule directly with:
+#   curl -H 'Host: shkills.biyou.internal' http://192.168.83.16/api/health
+#
+# A named host is required: the neighbouring kidstube Ingress claims host `*`,
+# and a specific host wins over it without disturbing that route.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shkills
+  namespace: shkills
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: shkills.biyou.internal
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: shkills
+                port:
+                  name: http

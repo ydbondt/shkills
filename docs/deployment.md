@@ -7,6 +7,7 @@ One container, one SQLite file, one URL. Shkills is deliberately boring to run.
 - [First run](#first-run) · [Rolling it out](#rolling-it-out)
 - [Backups](#backups) · [Upgrades](#upgrades) · [Monitoring](#monitoring)
 - [Running without Docker](#running-without-docker) · [Sizing](#sizing)
+- [Kubernetes](#kubernetes)
 
 ---
 
@@ -262,3 +263,32 @@ A 1 vCPU / 512 MB container is comfortable for a company of a few hundred.
 SQLite in WAL mode handles this without noticing. If you ever outgrow it, the
 bottleneck will be manifest computation on `/sync` — which is one indexed query
 and a SHA-256 over a few kilobytes.
+
+## Kubernetes
+
+Manifests for a k3s cluster live in [`deploy/k8s/`](../deploy/k8s/README.md),
+along with a GitHub Actions pipeline that builds each commit and rolls it out.
+
+The two decisions worth carrying to any cluster:
+
+**Use `Recreate`, and stay at one replica.** The store is SQLite on a
+ReadWriteOnce volume. A `RollingUpdate` briefly runs two pods, which means two
+writers against one database file — the one failure mode this design cannot
+absorb. `strategy: { type: Recreate }` costs a few seconds of downtime per
+deploy and removes the problem entirely.
+
+**Deploy an immutable tag.** It is tempting to push `:latest` and
+`kubectl rollout restart`. Then nothing records which commit is live, and
+`kubectl rollout undo` rolls back to the same moving tag. Tag images with the
+commit SHA and `kubectl set image` to it instead.
+
+If the cluster has no inbound access from the internet — most self-hosted ones
+don't — resist putting a kubeconfig in an Actions secret. Run a self-hosted
+runner inside the cluster and let it authenticate with its ServiceAccount, so no
+cluster credential exists outside the cluster at all. `deploy/k8s/60-runner.yaml`
+does this in about forty lines, with a Role that can move a Deployment's image
+and nothing else.
+
+The container runs unprivileged: uid 1000, read-only root filesystem, all
+capabilities dropped, `fsGroup` for the data volume and an `emptyDir` at `/tmp`
+for SQLite's scratch files.

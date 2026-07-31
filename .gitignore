@@ -11,3 +11,11 @@ data/
 .DS_Store
 coverage/
 packages/server/public/
+
+# This repo is public, and the cluster secrets are created out-of-band
+# (deploy/k8s/README.md). Belt and braces so a rendered manifest or a stray
+# kubeconfig cannot be committed by accident.
+*.kubeconfig
+kubeconfig*
+deploy/k8s/*secret*.yaml
+!deploy/k8s/60-runner.yaml

@@ -312,7 +312,12 @@ Put it behind TLS. Sessions are `httpOnly` cookies and `Secure` when
 hashes, each individually revocable. **The first account created on a fresh
 deployment becomes the administrator.**
 
-→ [Deployment guide](docs/deployment.md) · [Security model](docs/security.md)
+Running on Kubernetes instead? [`deploy/k8s/`](deploy/k8s/README.md) has the
+manifests and the CI pipeline that builds each commit and rolls it out to a k3s
+cluster — including how it deploys to a private cluster without putting a
+kubeconfig in this public repo.
+
+→ [Deployment guide](docs/deployment.md) · [Kubernetes](deploy/k8s/README.md) · [Security model](docs/security.md)
 
 ---
 

@@ -1,0 +1,100 @@
+# A GitHub Actions runner that lives *inside* the cluster.
+#
+# The cluster sits on a private LAN with no inbound access from GitHub. The
+# alternative — handing GitHub a kubeconfig as an Actions secret — would put a
+# working cluster credential in a place this repo's collaborators could reach.
+# Instead the runner polls GitHub for jobs from the inside, and authenticates to
+# the API server with its own ServiceAccount. No cluster credential exists
+# outside the cluster.
+#
+# What that ServiceAccount may do is deliberately small (see the Role): move the
+# image of an existing Deployment and watch the result. It cannot create,
+# delete, or read Secrets. A compromised workflow run can roll out a bad image —
+# which is inherent to continuous deployment — but nothing beyond that.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: github-runner
+  namespace: shkills
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: github-runner
+  namespace: shkills
+rules:
+  # `kubectl set image` and `kubectl rollout status|undo|restart`.
+  - apiGroups: ['apps']
+    resources: ['deployments']
+    verbs: ['get', 'list', 'watch', 'patch', 'update']
+  # `rollout status` and `rollout undo` read the deployment's ReplicaSets.
+  - apiGroups: ['apps']
+    resources: ['replicasets']
+    verbs: ['get', 'list', 'watch']
+  # So a failed deploy can print why, instead of just failing.
+  - apiGroups: ['']
+    resources: ['pods', 'pods/log', 'events']
+    verbs: ['get', 'list']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: github-runner
+  namespace: shkills
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: github-runner
+subjects:
+  - kind: ServiceAccount
+    name: github-runner
+    namespace: shkills
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-runner
+  namespace: shkills
+  labels:
+    app: github-runner
+spec:
+  replicas: 1
+  # Two runners registered under the same name fight over the registration.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: github-runner
+  template:
+    metadata:
+      labels:
+        app: github-runner
+    spec:
+      serviceAccountName: github-runner
+      containers:
+        - name: runner
+          image: myoung34/github-runner:ubuntu-jammy
+          env:
+            - name: REPO_URL
+              value: https://github.com/ydbondt/shkills
+            - name: RUNNER_SCOPE
+              value: repo
+            - name: RUNNER_NAME
+              value: k3s-shkills
+            - name: LABELS
+              value: shkills,k3s
+            # A PAT with `repo` scope, used only to exchange itself for a runner
+            # registration token at startup. Created out-of-band; not in this
+            # repo. See deploy/k8s/README.md.
+            - name: ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: github-runner-secret
+                  key: ACCESS_TOKEN
+          resources:
+            requests:
+              cpu: 25m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
