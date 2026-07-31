@@ -53,6 +53,7 @@ export class ShkillsWorld extends World {
   }
 
   async close(): Promise<void> {
+    for (const machine of this.machines.values()) machine.dispose();
     await this.context?.close();
     await this.server?.stop();
     if (this.tmpRoot) fs.rmSync(this.tmpRoot, { recursive: true, force: true });

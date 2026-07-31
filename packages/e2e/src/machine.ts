@@ -26,6 +26,8 @@ export class Machine {
   readonly home: string;
   readonly shkillsHome: string;
   readonly claudeDir: string;
+  /** Anything still running, so a scenario cannot leave a process behind. */
+  private readonly running = new Set<ReturnType<typeof spawn>>();
 
   constructor(
     readonly name: string,
@@ -66,6 +68,8 @@ export class Machine {
   private exec(command: string, args: string[], options: RunOptions): Promise<CommandResult> {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, { env: this.env(options.env), stdio: ['ignore', 'pipe', 'pipe'] });
+      this.running.add(child);
+      child.once('close', () => this.running.delete(child));
       let stdout = '';
       let stderr = '';
       let output = '';
@@ -105,6 +109,8 @@ export class Machine {
         env: this.env(),
         stdio: ['ignore', 'pipe', 'pipe'],
       });
+      this.running.add(child);
+      child.once('close', () => this.running.delete(child));
       let stdout = '';
       let stderr = '';
       let output = '';
@@ -143,6 +149,15 @@ export class Machine {
         resolve({ code: code ?? -1, stdout, stderr, output });
       });
     });
+  }
+
+  /**
+   * A refused login keeps polling for a moment after the scenario has learned
+   * what it wanted to know. Nothing may outlive the scenario that started it.
+   */
+  dispose(): void {
+    for (const child of this.running) child.kill('SIGKILL');
+    this.running.clear();
   }
 
   // ---- what is on disk ---------------------------------------------------
