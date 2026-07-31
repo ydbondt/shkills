@@ -54,6 +54,10 @@ function readJson<T>(file: string, fallback: T): T {
 function writeJson(file: string, value: unknown, mode?: number): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, mode ? { mode } : undefined);
+  // `mode` above only applies when writeFileSync *creates* the file. A
+  // config.json somebody else made with a looser umask would otherwise keep it
+  // and quietly expose the token written into it.
+  if (mode !== undefined) fs.chmodSync(file, mode);
 }
 
 export function loadConfig(): CliConfig {

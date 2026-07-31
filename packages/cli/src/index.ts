@@ -4,6 +4,7 @@ import { fail, say, setQuiet, style } from './ui.js';
 import { login, logout } from './commands/login.js';
 import { sync } from './commands/sync.js';
 import { runSetup, teardown } from './commands/setup.js';
+import { setHost } from './commands/host.js';
 import {
   browse,
   clean,
@@ -41,6 +42,7 @@ function usage(): void {
     clean             Remove every skill Shkills installed
     logout            Unlink this machine
     setup --off       Stop updating automatically
+    set-host <url>    Point this machine at a different Shkills address
 
   ${style.dim('Flags')}
     --host <url>      Shkills server (login only)
@@ -177,6 +179,10 @@ async function main(): Promise<void> {
       say(host || 'no server configured');
       return;
     }
+
+    case 'set-host':
+      setHost(need(args, 'address'));
+      return;
 
     default:
       fail(`unknown command “${command}” — run \`shkills help\``);

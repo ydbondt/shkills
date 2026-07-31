@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { config } from '../config.js';
+import { originFor } from '../origin.js';
 
 export const installRouter: Router = Router();
 
@@ -53,7 +53,7 @@ installRouter.get('/cli/version', (_req, res) => {
  * a terminal — hands straight over to `shkills login`.
  */
 installRouter.get('/install.sh', (req, res) => {
-  const host = config.publicUrl || `${req.protocol}://${req.get('host')}`;
+  const host = originFor(req);
   res.type('text/x-shellscript').send(`#!/bin/sh
 # Shkills installer — sets up the CLI that keeps your Claude skills in sync.
 set -eu
@@ -61,6 +61,7 @@ set -eu
 SHKILLS_HOST="\${SHKILLS_HOST:-${host}}"
 SHKILLS_HOME="\${SHKILLS_HOME:-$HOME/.shkills}"
 BIN_DIR="$SHKILLS_HOME/bin"
+export SHKILLS_HOME
 
 say()  { printf '%s\\n' "$1"; }
 fail() { printf 'error: %s\\n' "$1" >&2; exit 1; }
@@ -89,23 +90,42 @@ exec node "$BIN_DIR/shkills.mjs" "\\$@"
 LAUNCHER
 chmod +x "$BIN_DIR/shkills"
 
-# Remember the server so no one has to type a URL again.
-mkdir -p "$SHKILLS_HOME"
-if [ ! -f "$SHKILLS_HOME/config.json" ]; then
-  printf '{\\n  "host": "%s"\\n}\\n' "$SHKILLS_HOST" > "$SHKILLS_HOME/config.json"
-fi
+# Prove what we just downloaded actually runs, here, before anything depends on
+# it. A truncated download or an error page saved as a script fails silently
+# otherwise, and only turns up later as a broken Claude session.
+"$BIN_DIR/shkills" version >/dev/null 2>&1 ||
+  fail "the CLI downloaded from $SHKILLS_HOST does not run — try again, or report it"
+
+# Remember the server so no one has to type a URL again. The CLI writes this,
+# not a printf here: it updates a machine that is still pointing at an older
+# address (re-running the installer is the cure for that), it keeps any existing
+# link intact, and it creates the file — which will hold a token — private.
+"$BIN_DIR/shkills" set-host "$SHKILLS_HOST"
 
 # Put the launcher on PATH for the next shell, without duplicating the line.
+# Normally the line stays \$HOME-relative, so it survives a home directory that
+# moves; a custom SHKILLS_HOME has no choice but to be written out in full.
+if [ "$SHKILLS_HOME" = "$HOME/.shkills" ]; then
+  PATH_LINE='export PATH="$HOME/.shkills/bin:$PATH"'
+else
+  PATH_LINE="export PATH=\\"$BIN_DIR:\\$PATH\\""
+fi
+
 add_path() {
   rc="$1"
-  [ -f "$rc" ] || return 0
-  grep -q '.shkills/bin' "$rc" 2>/dev/null && return 0
-  printf '\\n# Shkills\\nexport PATH="$HOME/.shkills/bin:$PATH"\\n' >> "$rc"
+  grep -qF "$PATH_LINE" "$rc" 2>/dev/null && return 0
+  printf '\\n# Shkills\\n%s\\n' "$PATH_LINE" >> "$rc"
   say "Added $BIN_DIR to PATH in $rc"
 }
-add_path "$HOME/.zshrc"
-add_path "$HOME/.bashrc"
-[ -f "$HOME/.bashrc" ] || add_path "$HOME/.profile"
+rc_found=0
+for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+  [ -f "$rc" ] || continue
+  rc_found=1
+  add_path "$rc"
+done
+# A fresh container or a bare account has neither. Create the file every POSIX
+# login shell reads, so "open a new terminal" below is true rather than hopeful.
+[ "$rc_found" -eq 1 ] || add_path "$HOME/.profile"
 
 PATH="$BIN_DIR:$PATH"
 export PATH

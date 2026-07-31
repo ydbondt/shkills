@@ -177,8 +177,40 @@ unaffected by this, since device tokens are not JWTs.
 
 ### The install command shows the wrong URL
 
-`SHKILLS_PUBLIC_URL` is wrong or unset. It is baked into `/install.sh` and the
-device-link URL, so it has to match the address people actually reach.
+The portal, `/install.sh` and the device-link URL all name back the address the
+request came in on, so the usual answer is that the address you reached really
+is the one being echoed. Check in this order:
+
+1. **A proxy is rewriting the Host header.** Whatever it forwards is what gets
+   named back. Confirm with `curl -sS <your-url>/install.sh | grep SHKILLS_HOST`.
+2. **TLS terminates at a proxy and the URLs come out `http://`.** Set
+   `SHKILLS_TRUST_PROXY=true` so `X-Forwarded-Proto` is honoured.
+3. **You reached it by an address you did not mean to hand out** — a pod IP, a
+   NodePort. Either use the address you want people to use, or set
+   `SHKILLS_PIN_PUBLIC_URL=true` so everyone gets `SHKILLS_PUBLIC_URL` instead.
+4. **The Host header is not a plain `host[:port]`**, in which case it is refused
+   on purpose and `SHKILLS_PUBLIC_URL` is used — so check that one is right too.
+
+### A machine is still syncing from the old address
+
+It keeps whatever it was installed with. Move it without unlinking it:
+
+```bash
+shkills set-host https://shkills.yourcompany.com
+shkills status                       # confirms where it is talking to
+```
+
+Re-running the installer does the same thing, which is what makes it safe to
+put in a laptop setup script.
+
+### The Copy button does nothing
+
+Fixed — but if it comes back, the cause is almost certainly the same:
+`navigator.clipboard` exists **only in a secure context** (https, or
+localhost), so on a plain-HTTP deployment it is `undefined`. The portal falls
+back to `document.execCommand('copy')`, and if a browser refuses both the
+button says "Copy it yourself" rather than looking like it worked. Select the
+command and copy it by hand; nothing else is broken.
 
 ### `CLI bundle not built — run 'npm run build'`
 

@@ -28,13 +28,17 @@ The installer:
 
 1. checks for **Node.js 20+** and `curl` or `wget`,
 2. downloads the bundle to `~/.shkills/bin/shkills.mjs`,
-3. writes a launcher at `~/.shkills/bin/shkills`,
-4. adds that directory to `PATH` in `~/.zshrc` and `~/.bashrc` (once — it checks
-   before appending),
-5. records the server in `~/.shkills/config.json`,
+3. writes a launcher at `~/.shkills/bin/shkills`, and runs it once to check that
+   what it downloaded actually executes,
+4. records the server in `~/.shkills/config.json` (mode `0600` — it will hold a
+   token), naming the address you fetched the script from,
+5. adds `~/.shkills/bin` to `PATH` in `~/.zshrc` and `~/.bashrc` (once — it
+   checks before appending), or creates `~/.profile` if you have neither,
 6. runs `shkills login` if it has a terminal.
 
-It is idempotent: re-running it updates the CLI in place.
+It is idempotent, and re-running it is the supported way to update: it replaces
+the CLI in place and re-points the machine if the server has moved, without
+unlinking it.
 
 > The bundle is served as `.mjs` rather than `.js` on purpose. It is ESM, and
 > `~/.shkills/bin` has no `package.json` to say so — Node would parse a bare
@@ -217,6 +221,23 @@ $ shkills clean
 ✓ Removed 6 skills.
 ```
 
+### `shkills set-host <url>`
+
+Points this machine at a different Shkills address — the server moved, or it
+gained a DNS name and everyone should stop using its IP.
+
+```console
+$ shkills set-host http://shkills.biyou.internal
+✓ Now talking to http://shkills.biyou.internal (was http://192.168.83.16:31400)
+```
+
+The link is kept: a server that gains a name is the same server, so re-pointing
+does not make you log in again. If it really is a *different* server the token
+will not be honoured there, and `shkills status` will say so.
+
+Re-running the installer does this for you, which is why it is safe to leave the
+install command in a laptop setup script.
+
 ### `shkills help` · `shkills version`
 
 Prints usage and the CLI version. `--help`, `-h` and `--version` also work.
@@ -252,7 +273,7 @@ Nothing else on your machine is modified, ever.
 | Variable | Effect |
 | -------- | ------ |
 | `SHKILLS_HOME` | Where config and state live. Default `~/.shkills`. |
-| `SHKILLS_HOST` | Overrides the recorded server URL. |
+| `SHKILLS_HOST` | Overrides the recorded server URL for one run. To change it for good, use `set-host`. |
 | `SHKILLS_TOKEN` | Overrides the stored device token. |
 | `SHKILLS_HOSTNAME` | The name this machine announces when linking — what the portal shows next to "Is this you on …?". Defaults to the system hostname; worth setting on a container or a shared build box. |
 | `CLAUDE_CONFIG_DIR` | Where Claude's config lives. Default `~/.claude`. Honoured by Claude Code too. |
