@@ -123,6 +123,16 @@ startup, so a ConfigMap change alone does nothing.
 - **`Recreate`, not `RollingUpdate`.** The store is SQLite on a ReadWriteOnce
   volume; a rolling update would deliberately run two writers against one
   database file. For the same reason, do not scale past one replica.
+
+  Be clear-eyed about what this costs: **every deploy has a few seconds of
+  downtime**, because the old pod stops before the new one starts. And if an
+  image is broken, the portal stays down until the rollback lands — up to the
+  90s rollout timeout, verified by deploying a nonexistent tag on purpose. For
+  a tool people hit at the start of a Claude session that is the right trade
+  against the risk of two writers, but it is a trade.
+
+  If zero-downtime deploys ever matter more than SQLite's simplicity, that is
+  the moment to move to Postgres — not the moment to switch to `RollingUpdate`.
 - **The container runs unprivileged** (uid 1000, read-only root filesystem, all
   capabilities dropped) with `fsGroup: 1000` making the data volume writable and
   an `emptyDir` at `/tmp`. Verified by running the image under exactly those

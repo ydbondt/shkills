@@ -73,7 +73,14 @@ jobs:
 
           # If the new image does not become ready, put the previous one back
           # rather than leaving the portal down overnight.
-          if ! kubectl -n shkills rollout status deployment/shkills --timeout=180s; then
+          #
+          # This timeout is the worst-case outage, not just a patience setting:
+          # the Recreate strategy stops the old pod before starting the new one,
+          # so a bad image means the portal is down until the rollback lands.
+          # (Verified by deploying a nonexistent tag on purpose.) The app is
+          # serving health checks ~3s after start, so 90s is generous for a good
+          # image while halving the damage from a bad one.
+          if ! kubectl -n shkills rollout status deployment/shkills --timeout=90s; then
             echo "::error::Rollout failed — rolling back."
             kubectl -n shkills describe pods -l app=shkills | tail -40 || true
             kubectl -n shkills logs -l app=shkills --tail=80 --all-containers || true
