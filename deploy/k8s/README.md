@@ -92,31 +92,38 @@ gh api repos/ydbondt/shkills/actions/runners \
 
 ## Reaching the portal
 
-`SHKILLS_PUBLIC_URL` in `10-config.yaml` is not cosmetic. It is baked into
-`/install.sh`, into the install command the portal displays, and into the
-device-link URL the CLI prints — if it is wrong, onboarding breaks in a way that
-is annoying to debug.
+The portal answers at **http://shkills.biyou.internal** (through the Ingress)
+and at **http://192.168.83.16:31400** (the NodePort). Both work; the hostname is
+the one to hand to people.
 
-Today it points at the NodePort, `http://192.168.83.16:31400`, because
-`shkills.biyou.internal` has **no DNS record** — the internal resolver only has
-explicit entries, and there is no wildcard for `*.biyou.internal`. The Ingress
-in `50-ingress.yaml` is applied and correct, and starts working the moment
-somebody adds that record. You can prove the routing already works without DNS:
+`/install.sh`, the install command the portal displays and the device-link URL
+the CLI prints all name back **the address the caller actually reached**, so
+either door hands out a URL that works for whoever came through it. That is
+deliberate: a single hard-coded address is wrong for every door but one, and
+what it hands back is what an installed machine will sync from for ever after.
+
+`SHKILLS_PUBLIC_URL` in `10-config.yaml` is therefore the *canonical* address
+and the fallback used when a request cannot say — not the whole answer. Set
+`SHKILLS_PIN_PUBLIC_URL=true` if you ever want everyone funnelled onto it
+regardless of how they arrived (the obvious case being: once there is TLS, and
+you want nobody onboarding over plain HTTP).
+
+If you change it:
 
 ```sh
-curl -H 'Host: shkills.biyou.internal' http://192.168.83.16/api/health
-```
-
-Once the record exists:
-
-```sh
-# edit SHKILLS_PUBLIC_URL in 10-config.yaml to http://shkills.biyou.internal
 kubectl apply -f deploy/k8s/10-config.yaml
 kubectl -n shkills rollout restart deployment/shkills
 ```
 
 The restart is required — the value is read into the process environment at
 startup, so a ConfigMap change alone does nothing.
+
+Machines already installed keep talking to whatever address they were installed
+from. Re-running the installer re-points them without unlinking them:
+
+```sh
+curl -fsSL http://shkills.biyou.internal/install.sh | sh   # or: shkills set-host <url>
+```
 
 ## Notes on the manifests
 

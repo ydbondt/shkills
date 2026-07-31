@@ -6,11 +6,16 @@ metadata:
   name: shkills-config
   namespace: shkills
 data:
-  # The URL people actually reach the portal on. This is not cosmetic: it is
-  # baked into /install.sh, into the install command the portal shows, and into
-  # the device-link URL the CLI prints. If it is wrong, onboarding breaks.
+  # The canonical address of the portal.
   #
-  # The NodePort URL is what works today. `shkills.biyou.internal` has no DNS
-  # record yet; once it does, change this to http://shkills.biyou.internal and
-  # `kubectl rollout restart deployment/shkills -n shkills`.
-  SHKILLS_PUBLIC_URL: 'http://192.168.83.16:31400'
+  # It is the *fallback*, not the whole answer: /install.sh, the install command
+  # the portal shows and the device-link URL all name back the address the
+  # caller actually reached, so the NodePort still hands out a working NodePort
+  # URL. This one is what gets used when the request cannot say — and it is the
+  # address to prefer when both work.
+  SHKILLS_PUBLIC_URL: 'http://shkills.biyou.internal'
+
+  # Traefik sits in front, so X-Forwarded-Proto is trustworthy here and is how
+  # the app will notice the day this gets TLS. Without a proxy it would be a
+  # header anyone could send.
+  SHKILLS_TRUST_PROXY: 'true'

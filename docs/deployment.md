@@ -52,12 +52,43 @@ Everything is an environment variable. There is no config file.
 | Variable | Default | Notes |
 | -------- | ------- | ----- |
 | `PORT` | `4000` | |
-| `SHKILLS_PUBLIC_URL` | `http://localhost:<PORT>` | **Get this right.** It is baked into `/install.sh`, shown in the portal's install command, and used in the device-link URL the CLI prints. |
+| `SHKILLS_PUBLIC_URL` | `http://localhost:<PORT>` | The canonical address, and the fallback when a request cannot say. See [About addresses](#about-addresses). |
+| `SHKILLS_PIN_PUBLIC_URL` | off | Always answer with `SHKILLS_PUBLIC_URL`, never with the address in the request. |
+| `SHKILLS_TRUST_PROXY` | off | Honour `X-Forwarded-Proto` / `X-Forwarded-Host`. Turn on **only** with a proxy in front. |
 | `SHKILLS_DATA_DIR` | `./data` (`/data` in the image) | Where the database and the generated secret live. |
 | `SHKILLS_DB` | `<data dir>/shkills.sqlite` | Override only if you want the file elsewhere. |
 | `SHKILLS_JWT_SECRET` | generated and persisted | **Set this in production.** |
 | `SHKILLS_SECURE_COOKIES` | derived from `SHKILLS_PUBLIC_URL` | Whether the session cookie carries `Secure`. Set it only if the URL cannot describe your setup. |
 | `NODE_ENV` | — | `production` tightens error output. It does **not** control cookie flags. |
+
+### About addresses
+
+`/install.sh`, the install command shown in the portal, and the device-link URL
+the CLI prints all name back **the address the caller actually reached**.
+
+That is not a detail. One deployment usually answers to several addresses — a
+NodePort IP, a hostname through an ingress, a port-forward to a laptop — and
+whichever one somebody used is the one that provably works for them. What gets
+named back is what an installed machine will sync from for ever after, so a
+single hard-coded address is wrong for every door but one.
+
+`SHKILLS_PUBLIC_URL` is the canonical address: it is what a request that cannot
+say gets, what the startup banner prints, and what decides the `Secure` cookie
+flag. Only the Host header of the request can influence the rest, and only if it
+is a plain `host[:port]` — anything else falls back to the configured URL, since
+the value ends up inside a shell script.
+
+Set `SHKILLS_PIN_PUBLIC_URL=true` to switch that off and funnel everybody onto
+the canonical address whatever they typed. The case for it: once you have TLS,
+so nobody can onboard over plain HTTP by reaching a container directly.
+
+Behind a proxy, set `SHKILLS_TRUST_PROXY=true` so `X-Forwarded-Proto` is
+honoured — otherwise a TLS-terminating proxy makes every generated URL `http://`.
+Never set it without a proxy: it is a header any client can send.
+
+Machines already installed keep talking to the address they were installed from.
+`shkills set-host <url>` moves one, keeping it linked, and re-running the
+installer does the same thing.
 
 ### About `SHKILLS_SECURE_COOKIES`
 

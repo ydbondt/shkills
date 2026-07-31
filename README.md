@@ -304,14 +304,21 @@ docker compose up -d
 | Variable | Default | Notes |
 | -------- | ------- | ----- |
 | `PORT` | `4000` | |
-| `SHKILLS_PUBLIC_URL` | `http://localhost:4000` | Baked into the install script and device-link URL |
+| `SHKILLS_PUBLIC_URL` | `http://localhost:4000` | The canonical address, and the fallback for generated URLs |
 | `SHKILLS_DATA_DIR` | `./data` | The SQLite database lives here |
 | `SHKILLS_JWT_SECRET` | generated, persisted | **Set this in production** |
+| `SHKILLS_TRUST_PROXY` | off | Turn on when a proxy terminates TLS in front |
 
-Put it behind TLS. Sessions are `httpOnly` cookies and `Secure` when
-`NODE_ENV=production`; CLI tokens are bearer tokens stored only as SHA-256
-hashes, each individually revocable. **The first account created on a fresh
-deployment becomes the administrator.**
+The install script, the install command in the portal and the device-link URL
+all name back the address the caller actually reached, so a deployment with more
+than one address works from any of them — see
+[About addresses](docs/deployment.md#about-addresses).
+
+Put it behind TLS. Sessions are `httpOnly` cookies, and `Secure` follows the
+scheme of `SHKILLS_PUBLIC_URL` rather than `NODE_ENV` — a browser silently drops
+a `Secure` cookie sent over plain HTTP. CLI tokens are bearer tokens stored only
+as SHA-256 hashes, each individually revocable. **The first account created on a
+fresh deployment becomes the administrator.**
 
 Running on Kubernetes instead? [`deploy/k8s/`](deploy/k8s/README.md) has the
 manifests and the CI pipeline that builds each commit and rolls it out to a k3s
