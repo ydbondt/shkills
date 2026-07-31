@@ -34,7 +34,7 @@ authRouter.post(
     res.cookie(SESSION_COOKIE, signSession(row.id), {
       httpOnly: true,
       sameSite: 'lax',
-      secure: config.isProduction,
+      secure: config.secureCookies,
       maxAge: 12 * 60 * 60 * 1000,
     });
     audit(row.id, 'auth.login', 'user', row.id);
@@ -74,7 +74,7 @@ authRouter.post(
     res.cookie(SESSION_COOKIE, signSession(id), {
       httpOnly: true,
       sameSite: 'lax',
-      secure: config.isProduction,
+      secure: config.secureCookies,
       maxAge: 12 * 60 * 60 * 1000,
     });
     audit(id, 'auth.register', 'user', id, role);

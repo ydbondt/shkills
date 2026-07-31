@@ -56,7 +56,19 @@ Everything is an environment variable. There is no config file.
 | `SHKILLS_DATA_DIR` | `./data` (`/data` in the image) | Where the database and the generated secret live. |
 | `SHKILLS_DB` | `<data dir>/shkills.sqlite` | Override only if you want the file elsewhere. |
 | `SHKILLS_JWT_SECRET` | generated and persisted | **Set this in production.** |
-| `NODE_ENV` | — | `production` turns on `Secure` session cookies. |
+| `SHKILLS_SECURE_COOKIES` | derived from `SHKILLS_PUBLIC_URL` | Whether the session cookie carries `Secure`. Set it only if the URL cannot describe your setup. |
+| `NODE_ENV` | — | `production` tightens error output. It does **not** control cookie flags. |
+
+### About `SHKILLS_SECURE_COOKIES`
+
+The `Secure` flag follows the scheme of `SHKILLS_PUBLIC_URL`, because that is
+the address the browser actually uses — including when TLS is terminated by a
+proxy in front of this process.
+
+It deliberately does *not* follow `NODE_ENV`. A browser silently discards a
+`Secure` cookie delivered over plain HTTP, so a production deployment that has
+not got TLS yet would accept your password and then act as though you had never
+signed in — with no error anywhere to explain it.
 
 ### About `SHKILLS_JWT_SECRET`
 

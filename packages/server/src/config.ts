@@ -25,6 +25,26 @@ function resolveSecret(): string {
   return generated;
 }
 
+const publicUrl = envStr('SHKILLS_PUBLIC_URL', `http://localhost:${envStr('PORT', '4000')}`);
+
+/**
+ * Whether the session cookie carries `Secure`.
+ *
+ * This tracks the *public* URL's scheme, not NODE_ENV. A browser silently drops
+ * a `Secure` cookie delivered over plain HTTP, which makes the portal look like
+ * it accepts your password and then forgets you — so tying the flag to
+ * NODE_ENV=production bricks every production deployment that has not got TLS
+ * yet. The public URL is the one thing that knows how the browser reaches us,
+ * including when TLS is terminated by a proxy in front of this process.
+ *
+ * `SHKILLS_SECURE_COOKIES` overrides it for setups the URL cannot describe.
+ */
+function resolveSecureCookies(): boolean {
+  const override = process.env.SHKILLS_SECURE_COOKIES;
+  if (override) return override === 'true' || override === '1';
+  return publicUrl.startsWith('https://');
+}
+
 export const config = {
   port: Number(envStr('PORT', '4000')),
   dataDir,
@@ -33,6 +53,7 @@ export const config = {
   /** Lifetime of a browser session token. */
   sessionTtl: '12h',
   /** Public base URL, used in install instructions and the device-auth prompt. */
-  publicUrl: envStr('SHKILLS_PUBLIC_URL', `http://localhost:${envStr('PORT', '4000')}`),
+  publicUrl,
+  secureCookies: resolveSecureCookies(),
   isProduction: process.env.NODE_ENV === 'production',
 };
