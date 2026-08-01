@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ErrorNote, Field, Wordmark } from '../components';
 import { useSession } from '../state';
 
@@ -137,8 +137,14 @@ export default function SignIn() {
             </button>
           </form>
 
+          {mode === 'signin' && (
+            <Link className="btn btn-quiet mt-5 w-full" to="/forgot" data-testid="signin-forgot">
+              I have forgotten my password
+            </Link>
+          )}
+
           <button
-            className="btn btn-quiet mt-5 w-full"
+            className={`btn btn-quiet w-full ${mode === 'signin' ? 'mt-1' : 'mt-5'}`}
             data-testid="signin-toggle-mode"
             onClick={() => {
               setMode(mode === 'signin' ? 'register' : 'signin');

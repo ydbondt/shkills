@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { api, type Role, type Stats } from '../api';
-import { ErrorNote, Spinner, timeAgo } from '../components';
+import { CopyButton, ErrorNote, Modal, Spinner, timeAgo } from '../components';
 import { useAsync, useSession, useToast } from '../state';
 
 interface Person {
@@ -24,12 +25,35 @@ interface AuditEvent {
   actor: string | null;
 }
 
+interface PasswordRequest {
+  id: number;
+  userId: number;
+  email: string;
+  name: string;
+  createdAt: string;
+}
+
+interface HandOver {
+  url: string;
+  email: string;
+  expiresInMinutes: number;
+}
+
 export default function People() {
   const { user } = useSession();
   const { notify } = useToast();
+  const isAdmin = user?.role === 'admin';
   const people = useAsync(() => api.get<{ users: Person[] }>('/v1/admin/users'), []);
   const stats = useAsync(() => api.get<{ stats: Stats }>('/v1/admin/stats'), []);
   const audit = useAsync(() => api.get<{ events: AuditEvent[] }>('/v1/admin/audit?limit=40'), []);
+  const waiting = useAsync(
+    () =>
+      isAdmin
+        ? api.get<{ requests: PasswordRequest[] }>('/v1/admin/password-requests')
+        : Promise.resolve({ requests: [] }),
+    [isAdmin],
+  );
+  const [handOver, setHandOver] = useState<HandOver | null>(null);
 
   async function setRole(person: Person, role: Role) {
     try {
@@ -41,7 +65,21 @@ export default function People() {
     }
   }
 
+  /**
+   * On a deployment with no mail server this is the delivery mechanism: the
+   * link is shown once, to an administrator, to be handed over deliberately.
+   */
+  async function issueLink(person: { id: number; name: string }) {
+    try {
+      setHandOver(await api.post<HandOver>(`/v1/admin/users/${person.id}/reset-link`, {}));
+      waiting.reload();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'That did not work.', 'negative');
+    }
+  }
+
   const s = stats.data?.stats;
+  const requests = waiting.data?.requests ?? [];
 
   return (
     <div className="pt-16" data-testid="people-page">
@@ -71,6 +109,40 @@ export default function People() {
         </div>
       )}
 
+      {requests.length > 0 && (
+        <section className="mt-14" data-testid="password-requests">
+          <h2 className="t-title">Waiting to get back in</h2>
+          <p className="text-soft mt-1" style={{ maxWidth: '46rem' }}>
+            This Shkills has no mail server, so a link has to be handed over by a person. Give it to
+            them the way you would give them a password — anyone holding it can set theirs.
+          </p>
+          <div className="mt-6 space-y-1" style={{ maxWidth: '54rem' }}>
+            {requests.map((req) => (
+              <div
+                key={req.id}
+                data-testid={`password-request-${req.email}`}
+                className="flex flex-wrap items-center justify-between gap-4 py-4"
+                style={{ borderBottom: '1px solid var(--line)' }}
+              >
+                <div>
+                  <p style={{ fontWeight: 600 }}>{req.name}</p>
+                  <p className="t-meta">
+                    {req.email} · asked {timeAgo(req.createdAt)}
+                  </p>
+                </div>
+                <button
+                  className="btn btn-primary"
+                  data-testid={`password-link-${req.email}`}
+                  onClick={() => void issueLink({ id: req.userId, name: req.name })}
+                >
+                  Make a link
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <hr className="rule my-14" />
 
       {people.loading && <Spinner label="Loading people" />}
@@ -96,34 +168,82 @@ export default function People() {
               </p>
             </div>
 
-            {user?.role === 'admin' ? (
-              <select
-                className="field"
-                data-testid={`person-role-${person.email}`}
-                data-role={person.role}
-                data-editable="true"
-                style={{ width: 'auto', padding: '0.4rem 0.7rem', fontSize: '0.875rem' }}
-                value={person.role}
-                onChange={(event) => void setRole(person, event.target.value as Role)}
-                aria-label={`Role for ${person.name}`}
-              >
-                <option value="member">Member — can propose</option>
-                <option value="curator">Curator — can approve</option>
-                <option value="admin">Admin — can manage people</option>
-              </select>
-            ) : (
-              <span
-                className="chip chip-static"
-                data-testid={`person-role-${person.email}`}
-                data-role={person.role}
-                data-editable="false"
-              >
-                {person.role}
-              </span>
-            )}
+            {/* Wraps rather than pushing the row wider: at phone width the
+                button and the role picker do not fit on one line. */}
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              {isAdmin && (
+                <button
+                  className="btn btn-quiet"
+                  data-testid={`person-reset-${person.email}`}
+                  onClick={() => void issueLink(person)}
+                  title={`Make a single-use link so ${person.name} can set a new password`}
+                >
+                  Reset password
+                </button>
+              )}
+              {user?.role === 'admin' ? (
+                <select
+                  className="field"
+                  data-testid={`person-role-${person.email}`}
+                  data-role={person.role}
+                  data-editable="true"
+                  style={{ width: 'auto', padding: '0.4rem 0.7rem', fontSize: '0.875rem' }}
+                  value={person.role}
+                  onChange={(event) => void setRole(person, event.target.value as Role)}
+                  aria-label={`Role for ${person.name}`}
+                >
+                  <option value="member">Member — can propose</option>
+                  <option value="curator">Curator — can approve</option>
+                  <option value="admin">Admin — can manage people</option>
+                </select>
+              ) : (
+                <span
+                  className="chip chip-static"
+                  data-testid={`person-role-${person.email}`}
+                  data-role={person.role}
+                  data-editable="false"
+                >
+                  {person.role}
+                </span>
+              )}
+            </div>
           </div>
         ))}
       </div>
+
+      {/* Shown once, on purpose: it is not stored anywhere it can be read back. */}
+      <Modal
+        open={handOver !== null}
+        onClose={() => setHandOver(null)}
+        title="Hand this over"
+        testId="password-link-modal"
+      >
+        <p className="text-soft" style={{ lineHeight: 1.6 }}>
+          A single-use link for <strong>{handOver?.email}</strong>. It stops working in{' '}
+          {handOver?.expiresInMinutes} minutes, or as soon as it is used. You will not be shown it
+          again.
+        </p>
+        {/* `.terminal` is `white-space: pre` so commands never wrap; a link is
+            the opposite case — it has to be readable in one look to be checked
+            before it is handed over. */}
+        <div
+          className="terminal mt-5"
+          data-testid="password-link-url"
+          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
+        >
+          {handOver?.url}
+        </div>
+        <div className="mt-6 flex gap-3">
+          <CopyButton text={handOver?.url ?? ''} label="Copy the link" testId="password-link-copy" />
+          <button
+            className="btn btn-quiet"
+            onClick={() => setHandOver(null)}
+            data-testid="password-link-done"
+          >
+            Done
+          </button>
+        </div>
+      </Modal>
 
       <hr className="rule my-14" />
 
@@ -177,6 +297,9 @@ function describe(action: string): string {
     'auth.register': 'joined',
     'auth.login': 'signed in',
     'auth.password_change': 'changed their password',
+    'auth.reset_requested': 'asked for a way back into the account',
+    'auth.reset_issued': 'made a password link for',
+    'auth.password_reset': 'recovered their password',
   };
   return phrases[action] ?? action;
 }
