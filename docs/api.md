@@ -118,7 +118,40 @@ resolves to a person.
 { "current": "…", "next": "…" }
 ```
 
-`403` if `current` is wrong.
+`403` if `current` is wrong. Signs out every other session and returns a fresh
+cookie for this one.
+
+### `POST /api/v1/auth/forgot`
+
+```json
+{ "email": "…" }
+```
+
+`202` `{ "ok": true, "delivery": "email" | "administrator", "expiresInMinutes": 60 }`.
+
+**The answer never depends on whether the account exists** — same status, same
+body, and no record is written for an address nobody uses. `delivery` describes
+the *deployment*, not the account: `email` when a mail server is configured,
+`administrator` when the link has to be handed over by a person. Asking again
+within a minute quietly does nothing.
+
+### `GET /api/v1/auth/reset?token=…`
+
+`{ "email": "…", "name": "…" }` — whose account the link opens, so the page can
+name it before asking for a password. `410` if the link has been used, replaced
+or has expired.
+
+### `POST /api/v1/auth/reset`
+
+```json
+{ "token": "…", "password": "…" }
+```
+
+`{ user, linkedDevices }` and signs you in. `410` for a link that is no longer
+good, `422` for a password under 8 characters — the link survives that, so it can
+still be used properly. Every other session is signed out; device tokens are
+deliberately left alone, and `linkedDevices` is how many there are. See
+[security](./security.md#recovering-a-lost-password).
 
 ---
 
@@ -522,6 +555,19 @@ machines.
 
 Any of `role`, `department`, `active`. **Returns `409` if the change would leave
 no active admin.**
+
+### `GET /api/v1/admin/password-requests` — *admin*
+
+`{ requests: [{ id, userId, email, name, createdAt, expiresAt, delivery }] }` —
+who is waiting to get back in. **Never carries the link itself**: that is minted
+and shown once, by the endpoint below.
+
+### `POST /api/v1/admin/users/:id/reset-link` — *admin*
+
+`{ url, email, name, expiresInMinutes }`. Mints a single-use link and shows it
+to the administrator **once**, to be handed over out of band. This is how a
+deployment with no mail server delivers a reset. Retires that account's other
+outstanding links.
 
 ### `GET /api/v1/admin/audit` — *curator*
 

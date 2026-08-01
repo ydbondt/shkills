@@ -59,6 +59,10 @@ Everything is an environment variable. There is no config file.
 | `SHKILLS_DB` | `<data dir>/shkills.sqlite` | Override only if you want the file elsewhere. |
 | `SHKILLS_JWT_SECRET` | generated and persisted | **Set this in production.** |
 | `SHKILLS_SECURE_COOKIES` | derived from `SHKILLS_PUBLIC_URL` | Whether the session cookie carries `Secure`. Set it only if the URL cannot describe your setup. |
+| `SHKILLS_SMTP_URL` | — | `smtp://user:pass@host:587`. Setting it is what turns emailed password-reset links on. |
+| `SHKILLS_MAIL_FROM` | `shkills@<public host>` | The envelope sender. |
+| `SHKILLS_MAIL_TRANSPORT` | `smtp` if a URL is set, else `none` | Force it: `smtp`, `file` (write messages to a directory) or `none`. |
+| `SHKILLS_MAIL_DIR` | `<data dir>/mail` | Where the `file` transport writes. |
 | `NODE_ENV` | — | `production` tightens error output. It does **not** control cookie flags. |
 
 ### About addresses
@@ -100,6 +104,29 @@ It deliberately does *not* follow `NODE_ENV`. A browser silently discards a
 `Secure` cookie delivered over plain HTTP, so a production deployment that has
 not got TLS yet would accept your password and then act as though you had never
 signed in — with no error anywhere to explain it.
+
+### About sending mail
+
+Shkills sends exactly one kind of message: a link for somebody who has lost
+their password. Set `SHKILLS_SMTP_URL` and it is emailed; leave it unset and the
+request goes to a queue on the **People** page instead, for an administrator to
+hand over by hand. Both work — the second is simply what a deployment without a
+mail server can do.
+
+To see what a message looks like before pointing it at a real relay:
+
+```bash
+SHKILLS_MAIL_TRANSPORT=file SHKILLS_MAIL_DIR=/tmp/shkills-mail  # then read the files
+```
+
+If the mail server is unreachable when somebody asks, the link is not thrown
+away: the request falls back to the administrators' queue and the person is told
+so. Nothing about this ever changes the answer given to the person asking, which
+has to look the same whether or not the address belongs to an account.
+
+**Whoever holds the link holds the account until it is used**, so on a
+plain-HTTP deployment it is one more reason to get TLS in front. See
+[security](./security.md#recovering-a-lost-password).
 
 ### About `SHKILLS_JWT_SECRET`
 

@@ -38,13 +38,13 @@ All notable changes to this project are documented here. The format follows
   started, concepts, architecture, the portal, the CLI, skill authoring,
   deployment, security, the API, the data model, troubleshooting,
   development, the acceptance criteria and how they are tested.
-- **Tests** — 86 across the three packages, including the sync engine's
+- **Tests** — 119 across the three packages, including the sync engine's
   ownership rules, the hook's idempotency, and the approval workflow's state
   guards.
-- **Acceptance criteria** — [50 numbered statements](docs/acceptance-criteria.md)
+- **Acceptance criteria** — [58 numbered statements](docs/acceptance-criteria.md)
   of what Shkills promises, derived from the original brief, each recording
   where it came from.
-- **Acceptance suite** — `packages/e2e`: 60 Cucumber scenarios covering every
+- **Acceptance suite** — `packages/e2e`: 73 Cucumber scenarios covering every
   one of those criteria, tagged `@AC-n`, run by `npm run test:e2e`. Each
   scenario owns a server, a database, a browser context and a throwaway machine;
   the portal is addressed only through `data-testid`, and the propagation
@@ -89,3 +89,26 @@ All notable changes to this project are documented here. The format follows
   URLs are `https://` when a proxy terminates TLS in front.
 - The installer **runs the CLI it just downloaded** before trusting it, catching
   a truncated download or an error page saved as a script at install time.
+
+### Added (recovering a lost password)
+
+- **Password recovery**, built on one artefact: a single-use link that expires
+  in an hour and is stored only as a SHA-256. Setting a password by any route
+  retires that account's outstanding links.
+- **Three ways the link reaches its owner**, so that a deployment is never
+  without one. Emailed where `SHKILLS_SMTP_URL` is set; handed over by an
+  administrator from a queue on the **People** page where it is not; and
+  `npm run reset-password` inside the container for the administrator of a
+  one-account deployment, who has nobody to ask.
+- **Asking reveals nothing.** `POST /api/v1/auth/forgot` answers identically
+  whether or not the address belongs to an account, and writes no record for one
+  that does not. One request per account per minute.
+- **Every session can now be ended at once**, by a per-account session epoch
+  carried in the session token. A password reset and a password change both use
+  it, and both re-issue a token for the browser doing it. Device tokens are
+  deliberately unaffected — see
+  [security](docs/security.md#recovering-a-lost-password).
+- **A mail sender** with three transports: `smtp` (via nodemailer), `file` for
+  trying the flow out, and `none`. A mail server that is down downgrades the
+  request to the administrators' queue rather than losing the link.
+

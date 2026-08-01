@@ -153,6 +153,59 @@ Open the skill, go to **History**, and roll back to the previous version. Every
 machine returns to it on the next sync. The rollback is recorded in the audit
 log; nothing is lost.
 
+### I have forgotten my password
+
+Click **I have forgotten my password** on the sign-in page and give your address.
+What happens next depends on the deployment, and the page will tell you which:
+
+- **It has a mail server** — a link arrives by email. It works once and lasts an
+  hour.
+- **It has not** — an administrator now sees you on the **People** page under
+  *Waiting to get back in*, and can hand you a link. Ask them.
+
+The link opens a page that names the account it will change, so check that it is
+yours before typing anything. Setting the password signs you in and signs out
+every other browser. **Your linked machines keep syncing** — they are separate
+credentials, not derived from your password. If you are resetting because you
+think somebody else got in, go to **Your setup** afterwards and revoke any
+machine you do not recognise.
+
+Nothing about asking is irreversible: your old password keeps working until a
+link is actually used.
+
+### The link says it has expired, and I only just got it
+
+Links last an hour and work once, and **asking again retires the one you were
+sent first** — so if you clicked "forgotten my password" twice, only the second
+link works. So does an administrator making you one: theirs replaces yours.
+
+Ask for another. If the same thing keeps happening, you are probably following
+an older message; use the newest one.
+
+### I am the only account, and I have forgotten the password
+
+The two routes above both need somebody else — a mail server, or another admin.
+This one does not. On the machine running Shkills:
+
+```bash
+# Docker
+docker compose exec shkills node dist/reset-password.js you@yourcompany.com
+
+# Kubernetes
+kubectl exec -n shkills deploy/shkills -- node dist/reset-password.js you@yourcompany.com
+
+# From a checkout
+npm run reset-password -w @shkills/server -- you@yourcompany.com
+```
+
+It prints a single-use link to open in a browser. With no arguments it lists the
+accounts on the deployment, which is usually enough to remember which address
+you used.
+
+`--password 'a new one'` sets it straight away instead, for when you cannot
+reach the portal from a browser — at the cost of the password appearing in your
+shell history and, briefly, in the process list.
+
 ### I am locked out — no admin account
 
 If the account was deactivated: it cannot have been the last one, since Shkills
@@ -268,6 +321,18 @@ Yes. The CLI honours it exactly as Claude Code does.
 
 **Can two people own the same skill name?**
 No. Slugs are globally unique — they are directory names.
+
+**Do I need a mail server to run this?**
+No. Without one the only thing you lose is *self-service* password recovery: a
+request goes to the administrators' queue on the **People** page instead of an
+inbox, and there is a console command for the administrator who has nobody to
+ask. See [I have forgotten my password](#i-have-forgotten-my-password).
+
+**Does resetting my password unlink my machines?**
+No, on purpose. They are separate credentials, and revoking them would stop
+skills reaching you for a reason that is usually just forgetfulness. The reset
+tells you how many are linked; revoke any you do not recognise under **Your
+setup**.
 
 **What happens to skills when someone leaves?**
 Deactivate the account: every session and every device stops immediately. The

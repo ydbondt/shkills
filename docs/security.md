@@ -5,6 +5,7 @@ What Shkills protects, how, and what it deliberately does not try to do.
 - [The short version](#the-short-version)
 - [Authentication](#authentication) · [Authorisation](#authorisation)
 - [Device tokens](#device-tokens) · [Sessions](#sessions) · [Passwords](#passwords)
+- [Recovering a lost password](#recovering-a-lost-password)
 - [What lands on a laptop](#what-lands-on-a-laptop)
 - [Audit trail](#audit-trail)
 - [Threat model](#threat-model)
@@ -16,8 +17,8 @@ What Shkills protects, how, and what it deliberately does not try to do.
 ## The short version
 
 - Passwords are **bcrypt** hashes (cost 10). Never stored or logged in the clear.
-- Sessions are **`httpOnly` JWT cookies**, `sameSite=lax`, `Secure` in
-  production, 12-hour lifetime.
+- Sessions are **`httpOnly` JWT cookies**, `sameSite=lax`, `Secure` when the
+  public URL is https, 12-hour lifetime — and can all be ended at once.
 - CLI credentials are **bearer tokens stored only as SHA-256 hashes**, one per
   machine, individually revocable.
 - CLI login uses the **device-authorization flow** — the CLI never sees a
@@ -26,6 +27,9 @@ What Shkills protects, how, and what it deliberately does not try to do.
 - Input is validated with **zod** at the edge; every query is a **prepared
   statement**.
 - The sync engine **never touches a file it did not create**.
+- A lost password is recovered with a **single-use link that expires in an
+  hour**, stored only as a hash, and asking for one **reveals nothing** about
+  whether the address belongs to anybody.
 
 ## Authentication
 
@@ -114,13 +118,22 @@ code is worthless without a signed-in human approving it.
 | Cookie | `shkills_session` | |
 | `httpOnly` | yes | Script cannot read it |
 | `sameSite` | `lax` | Blocks cross-site POST; keeps the device-link URL working when opened from a terminal |
-| `secure` | when `NODE_ENV=production` | |
+| `secure` | when `SHKILLS_PUBLIC_URL` is https | A `Secure` cookie over plain http is silently dropped by the browser |
 | Lifetime | 12 hours | Both the cookie `maxAge` and the JWT `exp` |
 | Signature | HS256 with `SHKILLS_JWT_SECRET` | |
 
-The token carries only `sub` — the user id. Role and status are re-read from the
-database on every request, so a demotion or deactivation takes effect
-immediately rather than at the next login.
+The token carries `sub` — the user id — and `se`, the account's session epoch.
+Role and status are re-read from the database on every request, so a demotion or
+deactivation takes effect immediately rather than at the next login.
+
+**Ending every session at once.** Sessions are stateless, so there is nothing to
+delete. Instead each account has a counter, and a token is only accepted for the
+counter it was signed under; bumping it invalidates every token everywhere in
+one statement. A password reset and a password change both bump it (and both
+hand the browser doing it a freshly signed one, so you are not signed out of the
+page you did it on). A counter rather than a timestamp because `iat` has
+one-second resolution and a reset signs a new token in the same second it
+invalidates the old.
 
 Rotating `SHKILLS_JWT_SECRET` signs everybody out of the browser and leaves CLI
 syncing untouched.
@@ -134,8 +147,48 @@ syncing untouched.
   identical `incorrect email or password`, and an inactive account is
   indistinguishable from a nonexistent one.
 
-There is no password reset flow. On a company deployment an admin sets a new
-password; wiring this to your identity provider is the obvious extension.
+## Recovering a lost password
+
+Everything hangs off one artefact: a **single-use link that expires in an hour**.
+Only its SHA-256 is stored, so the database never holds a usable one. Minting a
+new link retires that account's outstanding ones, and so does setting the
+password by any route — a link that survived would be a spare key to an account
+somebody has just taken back.
+
+Three ways it reaches its owner, and a deployment uses whichever it can:
+
+| Route | When | Who has to be available |
+| ----- | ---- | ----------------------- |
+| Emailed | `SHKILLS_SMTP_URL` is set | The mail server |
+| Handed over by an administrator | otherwise | Another admin account |
+| `npm run reset-password` in the container | always | Somebody with a shell |
+
+The third exists because the second cannot help the administrator of a
+deployment whose only account is theirs — which is the normal shape of a
+single-tenant install, and exactly the person who most needs a way back in.
+
+**Asking reveals nothing.** `POST /api/v1/auth/forgot` answers `202` with an
+identical body whether or not the address belongs to an account, and writes no
+record for an address that does not. Otherwise a signed-out stranger could ask
+the portal who works here, one address at a time. Repeating the request inside a
+minute quietly does nothing, so it cannot be used to flood an inbox or the
+administrators' queue.
+
+**What a reset takes back, and what it does not.**
+
+- Every browser session, everywhere, is ended (see [Sessions](#sessions) above).
+- **Device tokens are left alone.** They are separate credentials that were never
+  derived from the password — the same reasoning that keeps a GitHub personal
+  access token alive across a password reset — and revoking them would silently
+  stop skills reaching every machine that person owns, which is the one thing
+  Shkills promises, for a reason that is usually just forgetfulness. The reset
+  instead says how many machines are linked and points at **Your setup**, where
+  revoking one is already a single click. If you are resetting because you think
+  somebody else got in, that is the page to look at next.
+
+**What is on the record.** `auth.reset_requested` (who was asked about),
+`auth.reset_issued` (which administrator handed a link over) and
+`auth.password_reset` all land in the audit log, visible to curators and admins.
 
 ## What lands on a laptop
 
@@ -195,7 +248,8 @@ first, and indexed on `created_at DESC`.
 | ------ | -------- |
 | SQL injection | Every query is a prepared statement with bound parameters. No string interpolation anywhere in a query. |
 | Malformed input | zod schemas at every route boundary, with explicit length and format bounds. Bodies capped at 2 MB. |
-| Credential stuffing feedback | Identical error for every failed login. |
+| Credential stuffing feedback | Identical error for every failed login, and an identical answer to every reset request. |
+| Keeping a stolen session after a reset | Every session is ended when a password changes, by bumping the account's session epoch. |
 | Token theft from the database | Only SHA-256 hashes are stored. |
 | Session theft via XSS | `httpOnly` cookies. |
 | Cross-site request forgery | `sameSite=lax` cookies; every mutation is a non-GET request. |
@@ -211,7 +265,8 @@ first, and indexed on `created_at DESC`.
 | --- | ------- |
 | **No rate limiting** | Login and device-code endpoints are unthrottled. Put a rate limit at your proxy if the portal is internet-facing. |
 | **No SSO / MFA** | Email and password only. Front it with your identity provider if you need more. |
-| **No password reset** | Deliberate. An admin sets a new one. |
+| **A reset link in transit** | Whoever holds the link holds the account until it is used. Over plain HTTP that includes anyone on the network path — one more reason to put this behind TLS. |
+| **Reset requests are unthrottled per sender** | One request per account per minute is enforced; nothing limits how many *different* accounts one sender may ask about. |
 | **No CSP or security headers** | Add them at the proxy. `x-powered-by` is disabled; nothing else is set. |
 | **Tokens do not expire** | Revocation is manual and explicit. |
 | **Skills are visible to everyone signed in** | Audiences are for finding things, not access control. Do not put secrets in a skill. |

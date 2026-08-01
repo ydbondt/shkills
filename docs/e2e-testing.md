@@ -131,6 +131,27 @@ All of it is generic — there is no per-page step definition anywhere.
 | `When "maya@acme.test" links the machine "laptop" from "localhost"` | Links through a different address than the default |
 | `Then the link it printed points at the address that machine uses` | The device-link prompt follows the caller |
 
+**Getting back in** (`src/steps/recovery.steps.ts`)
+
+| Step | |
+| ---- | --- |
+| `When "ines@acme.test" asks for a way back in` | The signed-out request, through the API |
+| `Then an address nobody uses is answered exactly the same way` | Asks again for a made-up address and compares the whole answer |
+| `When I follow the link that was emailed to "…"` | Reads the message the server really wrote, and opens the link in it |
+| `When I follow the link the administrator made` | Takes it off the hand-over dialog, then signs out first |
+| `When I follow that link again` | The same link, a second time |
+| `When an operator runs the console command for "…"` → `When I follow the link it printed` | Runs `dist/reset-password.js` against the same database, as `kubectl exec` would |
+| `When an administrator makes a newer link for "…"` | To show it retires the older one |
+| `Then the email to "…" names the address I used` · `Then nothing is emailed to "…"` | |
+| `Given "…" is signed in somewhere else` → `Then "…" is signed out there` | Another session, before and after a reset |
+| `Then "…" can sign in with "…"` · `Then "…" cannot sign in with "…"` | |
+
+A scenario tagged **`@with-a-mail-server`** gets a Shkills that can send email —
+the `file` transport, writing real messages into a directory the steps read.
+Untagged ones get one that cannot, which is what a freshly stood-up deployment
+is, and the case the administrator queue exists for. It is a tag rather than a
+`Given` because the transport is decided when the server process starts.
+
 **Setting the scene** (`src/steps/setup.steps.ts`) — `Given these people:`,
 `… has published the skill …`, `… has proposed the skill …`,
 `a collection … containing:`, `a company-wide collection … containing:`,

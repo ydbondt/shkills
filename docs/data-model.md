@@ -24,6 +24,7 @@ erDiagram
   users ||--o{ skill_versions : authored
   users ||--o{ subscriptions : has
   users ||--o{ device_tokens : linked
+  users ||--o{ password_resets : "way back in"
   users ||--o{ audit_log : acted
   skills ||--|{ skill_versions : "version history"
   skills ||--o| skill_versions : "published_version_id"
@@ -49,6 +50,7 @@ one transaction would otherwise be impossible.
 | `role` | TEXT | `member` · `curator` · `admin`. Default `member` |
 | `department` | TEXT | Default `engineering`. Informational |
 | `active` | INTEGER | `0` deactivates every session and device at once |
+| `session_epoch` | INTEGER | Bumped to end every browser session at once; carried in the session token as `se` |
 | `created_at` | TEXT | |
 
 The first row ever inserted gets `role = 'admin'`. The API refuses any update
@@ -164,6 +166,25 @@ Short-lived rows for the login flow.
 | `status` | TEXT | `pending` · `approved` · `claimed` · `denied` |
 | `created_at`, `expires_at` | TEXT | 15-minute TTL; expired rows swept on each new code |
 
+## `password_resets`
+
+One row per way back in. The token itself is never stored — only its SHA-256, so
+the database never holds a usable link.
+
+| Column | Type | Notes |
+| ------ | ---- | ----- |
+| `id` | INTEGER PK | |
+| `user_id` | INTEGER → `users` | |
+| `token_hash` | TEXT UNIQUE | SHA-256 of the link's token |
+| `delivery` | TEXT | `email` · `administrator` · `console` — how it reached its owner |
+| `issued_by` | INTEGER → `users`, nullable | `NULL` when the person asked for it themselves |
+| `created_at`, `expires_at` | TEXT | One-hour TTL. **Written by `datetime('now', '+n minutes')`**, not as an ISO string — an ISO string sorts *after* `datetime('now')` because of the `T`, so nothing would ever expire |
+| `used_at` | TEXT, nullable | Set when the link is spent. A row with this set is dead |
+| `voided_at` | TEXT, nullable | Set when a newer link, or a password set by any other route, made this one moot |
+
+A live link is one with neither `used_at` nor `voided_at` and an `expires_at` in
+the future. Everything else about recovery follows from that single predicate.
+
 ## `audit_log`
 
 Append-only. No API modifies or deletes a row.
@@ -184,6 +205,7 @@ idx_versions_skill   ON skill_versions(skill_id)
 idx_versions_status  ON skill_versions(status)     -- the review queue
 idx_subs_user        ON subscriptions(user_id)     -- the sync query
 idx_audit_created    ON audit_log(created_at DESC)
+idx_resets_user      ON password_resets(user_id)
 ```
 
 Plus the implicit indexes behind every `UNIQUE` and `PRIMARY KEY`.
