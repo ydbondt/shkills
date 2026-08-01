@@ -23,6 +23,7 @@ const PAGES: Record<string, string> = {
   people: '/people',
   'link a machine': '/link',
   'propose a skill': '/skills/new',
+  'forgotten password': '/forgot',
 };
 
 function pathFor(page: string): string {

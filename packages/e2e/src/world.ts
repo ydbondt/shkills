@@ -44,13 +44,19 @@ export class ShkillsWorld extends World {
   lastLoginAddress?: string;
   /** Which of its addresses the browser is using, when it is not the default. */
   portalAddress?: string;
+  /** The portal's answer to the last "I have forgotten my password". */
+  lastForgot?: unknown;
+  /** The reset link this scenario is holding, however it came by it. */
+  resetLink?: string;
+  /** What the console recovery command printed. */
+  consoleOutput?: string;
 
   constructor(options: IWorldOptions) {
     super(options);
   }
 
-  async open(browser: Browser): Promise<void> {
-    this.server = await startServer();
+  async open(browser: Browser, options: { mail?: boolean } = {}): Promise<void> {
+    this.server = await startServer(options);
     this.context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     this.page = await this.context.newPage();
     this.tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'shkills-e2e-home-'));
@@ -90,6 +96,14 @@ export class ShkillsWorld extends World {
   /** The anonymous client, for registration and for "signed out" assertions. */
   anonymous(): Api {
     return new Api(this.server.url);
+  }
+
+  /** The person who runs this company, for setup steps that need an admin. */
+  adminEmail(): string {
+    for (const person of this.people.values()) {
+      if (person.role === 'admin') return person.email;
+    }
+    throw new Error('this scenario has no administrator — list one in its "Given these people" table');
   }
 
   /** Somebody who is allowed to publish, for setup steps that need no author. */

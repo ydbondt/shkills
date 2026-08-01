@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 export const repoRoot = path.resolve(fileURLToPath(import.meta.url), '../../../..');
 
 export const serverEntry = path.join(repoRoot, 'packages/server/dist/index.js');
+/** The console way back in, the same file `kubectl exec` would run. */
+export const consoleResetEntry = path.join(repoRoot, 'packages/server/dist/reset-password.js');
 export const cliBundle = path.join(repoRoot, 'packages/cli/dist/shkills.mjs');
 export const webIndex = path.join(repoRoot, 'packages/web/dist/index.html');
 
@@ -15,7 +17,9 @@ export const webIndex = path.join(repoRoot, 'packages/web/dist/index.html');
  * beats a browser timing out on a blank page.
  */
 export function requireBuiltArtifacts(): void {
-  const missing = [serverEntry, cliBundle, webIndex].filter((file) => !fs.existsSync(file));
+  const missing = [serverEntry, consoleResetEntry, cliBundle, webIndex].filter(
+    (file) => !fs.existsSync(file),
+  );
   if (missing.length === 0) return;
   throw new Error(
     `these are not built yet:\n  ${missing

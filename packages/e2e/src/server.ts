@@ -9,6 +9,8 @@ export interface TestServer {
   url: string;
   port: number;
   dataDir: string;
+  /** Where the `file` mail transport drops messages, when it is switched on. */
+  mailDir: string;
   /** Everything the process wrote, kept so a failure can show it. */
   log: () => string;
   stop: () => Promise<void>;
@@ -50,9 +52,10 @@ async function waitForHealth(url: string, child: ChildProcess, log: () => string
  * decides whether the session cookie carries `Secure`, so the browser in these
  * tests sees the same cookie a homelab deployment issues.
  */
-export async function startServer(): Promise<TestServer> {
+export async function startServer(options: { mail?: boolean } = {}): Promise<TestServer> {
   const port = await freePort();
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shkills-e2e-server-'));
+  const mailDir = path.join(dataDir, 'mail');
   const url = `http://127.0.0.1:${port}`;
 
   const child = spawn(process.execPath, [serverEntry], {
@@ -64,6 +67,11 @@ export async function startServer(): Promise<TestServer> {
       SHKILLS_PUBLIC_URL: url,
       SHKILLS_JWT_SECRET: 'e2e-secret-not-used-anywhere-real',
       NODE_ENV: 'production',
+      // Off by default, because that is the state of a freshly stood-up
+      // deployment and the one the administrator queue exists for. The
+      // `file` transport writes real messages a scenario can read and follow.
+      SHKILLS_MAIL_TRANSPORT: options.mail ? 'file' : 'none',
+      SHKILLS_MAIL_DIR: mailDir,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -79,6 +87,7 @@ export async function startServer(): Promise<TestServer> {
     url,
     port,
     dataDir,
+    mailDir,
     log,
     stop: async () => {
       if (child.exitCode === null) {

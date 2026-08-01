@@ -25,6 +25,8 @@ request is the only authority we have:
 - **I** — the installer brief: *"Install script does not work very well. It is
   not referencing to the correct url (IP instead of hostname). And the copy
   button doesnt work. Thoroughly review it."*
+- **R** — the recovery brief: *"A user should be able to recover their password
+  when lost."*
 
 ---
 
@@ -131,6 +133,24 @@ not cosmetic: it is what an installed machine will talk to for ever after.
 | **AC-48** | A Host header that is not a plain host cannot get into the served script; the configured URL is used instead. | I |
 | **AC-49** | Re-running the installer re-points a machine that is still talking to an older address, without unlinking it. | I |
 | **AC-50** | The installer leaves a machine that can run `shkills` — the CLI it downloaded executes, and the launcher is on the PATH of a new shell, even on an account with no shell rc files. | I |
+
+## Getting back in
+
+A password is lost from a signed-out browser, which is the one state in which
+the portal can do nothing for you. So recovery has to work without an account,
+without giving a stranger anything, and — on a deployment with no mail server,
+which is the normal state of a homelab — without email.
+
+| # | Criterion | From |
+| --- | --- | --- |
+| **AC-51** | Somebody who has forgotten their password can ask for a way back in from the sign-in page, without being signed in. | R |
+| **AC-52** | The answer to that request is the same whether or not the address belongs to an account, so it cannot be used to ask who works here. | R |
+| **AC-53** | The link sets a new password, signs the person in, and the old password stops working. | R |
+| **AC-54** | A link that has been used, replaced or has expired is refused, and says so rather than failing silently. | R |
+| **AC-55** | Resetting a password signs out every other session, so recovering an account actually takes it back. | R |
+| **AC-56** | Where a mail server is configured, the link is emailed, and it names the address the person actually reached the portal on. | R |
+| **AC-57** | Where none is, an administrator can see who is waiting and hand over a link that works. | R |
+| **AC-58** | There is a way back in that needs neither a mail server nor a second account, for the administrator of a one-person deployment. | R |
 
 ---
 

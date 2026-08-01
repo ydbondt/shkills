@@ -25,8 +25,14 @@ AfterAll(async function () {
   await browser?.close();
 });
 
-Before(async function (this: ShkillsWorld) {
-  await this.open(browser);
+/**
+ * Whether this deployment has a mail server has to be decided before the
+ * process starts, so it is a tag rather than a `Given`. Untagged scenarios get
+ * a Shkills with no mail server, which is what a freshly stood-up one is.
+ */
+Before(async function (this: ShkillsWorld, scenario: ITestCaseHookParameter) {
+  const tags = scenario.pickle.tags.map((tag) => tag.name);
+  await this.open(browser, { mail: tags.includes('@with-a-mail-server') });
 });
 
 /**
