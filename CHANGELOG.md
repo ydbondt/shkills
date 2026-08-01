@@ -98,7 +98,7 @@ All notable changes to this project are documented here. The format follows
 - **Three ways the link reaches its owner**, so that a deployment is never
   without one. Emailed where `SHKILLS_SMTP_URL` is set; handed over by an
   administrator from a queue on the **People** page where it is not; and
-  `npm run reset-password` inside the container for the administrator of a
+  `reset-password` run inside the container for the administrator of a
   one-account deployment, who has nobody to ask.
 - **Asking reveals nothing.** `POST /api/v1/auth/forgot` answers identically
   whether or not the address belongs to an account, and writes no record for one

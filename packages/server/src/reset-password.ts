@@ -9,8 +9,9 @@
  *   npm run reset-password -- you@example.com
  *   npm run reset-password -- you@example.com --password 'a new one'
  *
- * On the cluster:
- *   kubectl exec -n shkills deploy/shkills -- node dist/reset-password.js you@…
+ * In the container, where there is no tsx and the working directory is /app:
+ *   kubectl exec -n shkills deploy/shkills -- \
+ *     node packages/server/dist/reset-password.js you@…
  */
 import { config } from './config.js';
 import { audit, db } from './db.js';

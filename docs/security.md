@@ -161,7 +161,7 @@ Three ways it reaches its owner, and a deployment uses whichever it can:
 | ----- | ---- | ----------------------- |
 | Emailed | `SHKILLS_SMTP_URL` is set | The mail server |
 | Handed over by an administrator | otherwise | Another admin account |
-| `npm run reset-password` in the container | always | Somebody with a shell |
+| `node packages/server/dist/reset-password.js` in the container | always | Somebody with a shell |
 
 The third exists because the second cannot help the administrator of a
 deployment whose only account is theirs — which is the normal shape of a

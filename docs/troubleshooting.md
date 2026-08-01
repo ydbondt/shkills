@@ -189,14 +189,19 @@ This one does not. On the machine running Shkills:
 
 ```bash
 # Docker
-docker compose exec shkills node dist/reset-password.js you@yourcompany.com
+docker compose exec shkills \
+  node packages/server/dist/reset-password.js you@yourcompany.com
 
 # Kubernetes
-kubectl exec -n shkills deploy/shkills -- node dist/reset-password.js you@yourcompany.com
+kubectl exec -n shkills deploy/shkills -- \
+  node packages/server/dist/reset-password.js you@yourcompany.com
 
 # From a checkout
 npm run reset-password -w @shkills/server -- you@yourcompany.com
 ```
+
+The path is relative to the image's `/app`, and it is `node`, not `npm run` —
+the runtime image has no dev dependencies, so there is no `tsx` in it.
 
 It prints a single-use link to open in a browser. With no arguments it lists the
 accounts on the deployment, which is usually enough to remember which address
