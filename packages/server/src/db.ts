@@ -101,6 +101,21 @@ CREATE TABLE IF NOT EXISTS device_auth (
   expires_at    TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  -- how the link reached its owner: email | administrator | console
+  delivery   TEXT NOT NULL DEFAULT 'administrator',
+  -- who asked. NULL when the person asked for it themselves.
+  issued_by  INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL,
+  used_at    TEXT,
+  -- set when a newer request, or the reset itself, made this one moot
+  voided_at  TEXT
+);
+
 CREATE TABLE IF NOT EXISTS audit_log (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   actor_id   INTEGER REFERENCES users(id),
@@ -115,7 +130,31 @@ CREATE INDEX IF NOT EXISTS idx_versions_skill  ON skill_versions(skill_id);
 CREATE INDEX IF NOT EXISTS idx_versions_status ON skill_versions(status);
 CREATE INDEX IF NOT EXISTS idx_subs_user       ON subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_created   ON audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_resets_user     ON password_resets(user_id);
 `);
+
+/**
+ * The schema above is created with `IF NOT EXISTS`, which cannot add a column
+ * to a table an older release already made. Databases in the field are the only
+ * ones that matter here, so new columns are added explicitly and idempotently.
+ */
+function addColumn(table: string, column: string, definition: string): void {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (columns.some((c) => c.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+/**
+ * Sessions are stateless JWTs, so there is nothing to delete when somebody
+ * needs every other session gone. Instead each token carries the epoch it was
+ * signed in, and a token whose epoch is not the current one is refused.
+ *
+ * A counter rather than a timestamp on purpose: a cutoff compared against the
+ * token's `iat` cannot tell apart two tokens issued in the same second, which
+ * is exactly what a reset does — sign a new one at the moment it invalidates
+ * the old. The counter has no such window.
+ */
+addColumn('users', 'session_epoch', 'INTEGER NOT NULL DEFAULT 0');
 
 export function audit(
   actorId: number | null,

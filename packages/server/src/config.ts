@@ -50,6 +50,23 @@ function envBool(key: string): boolean {
   return v === 'true' || v === '1';
 }
 
+export type MailTransport = 'smtp' | 'file' | 'none';
+
+/**
+ * How a password-reset link gets to its owner.
+ *
+ * `none` is the default because a Shkills is usually stood up before anybody
+ * has thought about SMTP, and a deployment with no mail server must still have
+ * a way back in — with `none` the request goes to the administrators instead.
+ * `file` writes the messages to a directory, which is how you try the flow
+ * before pointing it at a real server.
+ */
+function resolveMailTransport(): MailTransport {
+  const explicit = process.env.SHKILLS_MAIL_TRANSPORT;
+  if (explicit === 'smtp' || explicit === 'file' || explicit === 'none') return explicit;
+  return process.env.SHKILLS_SMTP_URL ? 'smtp' : 'none';
+}
+
 export const config = {
   port: Number(envStr('PORT', '4000')),
   dataDir,
@@ -72,4 +89,12 @@ export const config = {
   trustProxy: envBool('SHKILLS_TRUST_PROXY'),
   secureCookies: resolveSecureCookies(),
   isProduction: process.env.NODE_ENV === 'production',
+
+  mail: {
+    transport: resolveMailTransport(),
+    smtpUrl: process.env.SHKILLS_SMTP_URL ?? '',
+    from: envStr('SHKILLS_MAIL_FROM', `shkills@${new URL(publicUrl).hostname}`),
+    /** Where the `file` transport drops messages. */
+    dir: path.resolve(envStr('SHKILLS_MAIL_DIR', path.join(dataDir, 'mail'))),
+  },
 };

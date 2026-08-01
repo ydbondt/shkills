@@ -12,6 +12,7 @@ export function resetDb(): void {
     DELETE FROM audit_log;
     DELETE FROM device_auth;
     DELETE FROM device_tokens;
+    DELETE FROM password_resets;
     DELETE FROM subscriptions;
     DELETE FROM collection_skills;
     DELETE FROM collections;

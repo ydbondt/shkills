@@ -4,6 +4,13 @@ import { audit, db } from '../db.js';
 import { hashPassword, requireAuth, requireRole } from '../auth.js';
 import { h, parse, param } from '../http.js';
 import { DomainError } from '../services/skills.js';
+import { originFor } from '../origin.js';
+import {
+  RESET_TTL_MINUTES,
+  issueResetForUser,
+  outstandingRequests,
+  resetUrl,
+} from '../services/recovery.js';
 
 export const adminRouter: Router = Router();
 
@@ -94,6 +101,45 @@ adminRouter.patch(
     );
     audit(req.user!.id, 'user.update', 'user', id, JSON.stringify(body));
     res.json({ ok: true });
+  }),
+);
+
+/**
+ * Who is waiting for a way back in.
+ *
+ * On a deployment with no mail server this queue *is* the delivery mechanism,
+ * so it sits on the People page. It names the person, never the link: the link
+ * is handed over once, deliberately, by the admin who presses the button below.
+ */
+adminRouter.get(
+  '/password-requests',
+  requireAuth,
+  requireRole('admin'),
+  h((_req, res) => {
+    res.json({ requests: outstandingRequests() });
+  }),
+);
+
+/**
+ * Mints a link for somebody and shows it to the administrator exactly once, to
+ * be handed over out of band. This is the answer to "the only account is the
+ * administrator's and there is no SMTP" for everyone *except* that
+ * administrator — who has `npm run reset-password` inside the container.
+ */
+adminRouter.post(
+  '/users/:id/reset-link',
+  requireAuth,
+  requireRole('admin'),
+  h((req, res) => {
+    const id = Number(param(req, 'id'));
+    const link = issueResetForUser(id, 'administrator', req.user!.id);
+    audit(req.user!.id, 'auth.reset_issued', 'user', id, link.email);
+    res.json({
+      url: resetUrl(originFor(req), link.token),
+      email: link.email,
+      name: link.name,
+      expiresInMinutes: RESET_TTL_MINUTES,
+    });
   }),
 );
 

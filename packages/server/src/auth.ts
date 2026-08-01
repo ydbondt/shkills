@@ -36,9 +36,26 @@ export function verifyPassword(plain: string, hash: string): boolean {
   return bcrypt.compareSync(plain, hash);
 }
 
+function sessionEpoch(userId: number): number {
+  const row = db.prepare('SELECT session_epoch FROM users WHERE id = ?').get(userId) as
+    | { session_epoch: number }
+    | undefined;
+  return row?.session_epoch ?? 0;
+}
+
 export function signSession(userId: number): string {
   const options = { expiresIn: config.sessionTtl } as jwt.SignOptions;
-  return jwt.sign({ sub: String(userId) }, config.jwtSecret, options);
+  return jwt.sign({ sub: String(userId), se: sessionEpoch(userId) }, config.jwtSecret, options);
+}
+
+/** The one place that decides what a browser session cookie looks like. */
+export function setSessionCookie(res: Response, userId: number): void {
+  res.cookie(SESSION_COOKIE, signSession(userId), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: config.secureCookies,
+    maxAge: 12 * 60 * 60 * 1000,
+  });
 }
 
 function loadUser(id: number): AuthUser | undefined {
@@ -46,6 +63,27 @@ function loadUser(id: number): AuthUser | undefined {
     .prepare('SELECT id, email, name, role, department FROM users WHERE id = ? AND active = 1')
     .get(id) as AuthUser | undefined;
   return row;
+}
+
+/**
+ * Ends every session this person has anywhere, by moving the account on to the
+ * next epoch. Whoever asked for it needs a freshly signed token afterwards, or
+ * they have just signed themselves out too.
+ */
+export function invalidateSessions(userId: number): void {
+  db.prepare('UPDATE users SET session_epoch = session_epoch + 1 WHERE id = ?').run(userId);
+}
+
+/**
+ * A session token is only good for the epoch it was signed in. Without this a
+ * password reset would leave whoever knew the old password signed in for up to
+ * twelve hours, which would make recovery cosmetic.
+ */
+function userFromSession(raw: string): AuthUser | undefined {
+  const payload = jwt.verify(raw, config.jwtSecret) as { sub: string; se?: number };
+  const id = Number(payload.sub);
+  if ((payload.se ?? 0) !== sessionEpoch(id)) return undefined;
+  return loadUser(id);
 }
 
 /** Device tokens look like `shk_<prefix>_<secret>` and are stored only as a hash. */
@@ -89,8 +127,7 @@ export function attachUser(req: Request, _res: Response, next: NextFunction): vo
       return next();
     }
     try {
-      const payload = jwt.verify(raw, config.jwtSecret) as { sub: string };
-      req.user = loadUser(Number(payload.sub));
+      req.user = userFromSession(raw);
     } catch {
       /* invalid bearer token — stay anonymous */
     }
@@ -100,8 +137,7 @@ export function attachUser(req: Request, _res: Response, next: NextFunction): vo
   const cookie = req.cookies?.[SESSION_COOKIE];
   if (cookie) {
     try {
-      const payload = jwt.verify(cookie, config.jwtSecret) as { sub: string };
-      req.user = loadUser(Number(payload.sub));
+      req.user = userFromSession(cookie);
     } catch {
       /* expired or tampered cookie — stay anonymous */
     }
