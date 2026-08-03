@@ -208,7 +208,10 @@ collectionsRouter.put(
       | undefined;
     if (!c) throw new DomainError('no such collection', 404);
     const skill = getSkillBySlug(param(req, 'skillSlug'));
-    if (!skill) throw new DomainError('no such skill', 404);
+    // A collection hands its skills to everyone who joins it, so a personal one
+    // cannot go in. It answers 404 because a curator has no business knowing
+    // the name is in use by somebody's private draft.
+    if (!skill || skill.visibility === 'personal') throw new DomainError('no such skill', 404);
     const position = (
       db
         .prepare('SELECT COALESCE(MAX(position), 0) AS p FROM collection_skills WHERE collection_id = ?')

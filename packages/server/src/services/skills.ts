@@ -1,6 +1,6 @@
 import { audit, db } from '../db.js';
 import { checksum, renderSkillMd, SLUG_RE } from '../skill-format.js';
-import type { AuthUser } from '../auth.js';
+import { canCurate, type AuthUser } from '../auth.js';
 
 export interface SkillVersionRow {
   id: number;
@@ -24,18 +24,28 @@ export interface SkillVersionRow {
   reviewed_at: string | null;
 }
 
+export type Visibility = 'personal' | 'shared';
+
+/** Where a personal skill stands with the curators. */
+export type ShareStatus = 'none' | 'pending' | 'declined';
+
 export interface SkillRow {
   id: number;
   slug: string;
   owner_id: number;
   published_version_id: number | null;
   archived: number;
+  visibility: Visibility;
+  share_status: ShareStatus;
+  share_note: string | null;
+  share_asked_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface SkillDraft {
   slug: string;
+  visibility?: Visibility;
   title: string;
   description: string;
   category: string;
@@ -91,7 +101,9 @@ export function getVersion(id: number): SkillVersionRow | undefined {
  * Creates a brand new skill together with its first version.
  *
  * Curators skip the queue: making them submit a proposal only they can approve
- * is ceremony, not review. Anyone else lands in `pending`.
+ * is ceremony, not review. Anyone else lands in `pending`. A personal skill
+ * skips it too, whoever writes it — deferring review is the entire reason to
+ * make one.
  */
 export function createSkill(
   author: AuthUser,
@@ -101,17 +113,23 @@ export function createSkill(
   if (!SLUG_RE.test(draft.slug)) {
     throw new DomainError('slug must be lowercase words separated by single hyphens');
   }
+  // The slug is the directory name under ~/.claude/skills, so two skills of one
+  // name could never both be installed anyway — including one of them being
+  // somebody's personal skill. The message says the name is taken and no more.
   if (getSkillBySlug(draft.slug)) {
     throw new DomainError(`a skill named "${draft.slug}" already exists`, 409);
   }
 
-  const canSelfPublish = (author.role === 'curator' || author.role === 'admin') && !opts.submitForReview;
+  const personal = draft.visibility === 'personal';
+  const canSelfPublish =
+    personal || ((author.role === 'curator' || author.role === 'admin') && !opts.submitForReview);
   const status = canSelfPublish ? 'approved' : 'pending';
 
   const tx = db.transaction(() => {
     const skillId = Number(
-      db.prepare('INSERT INTO skills (slug, owner_id) VALUES (?, ?)').run(draft.slug, author.id)
-        .lastInsertRowid,
+      db
+        .prepare('INSERT INTO skills (slug, owner_id, visibility) VALUES (?, ?, ?)')
+        .run(draft.slug, author.id, personal ? 'personal' : 'shared').lastInsertRowid,
     );
     const versionId = insertVersion(skillId, draft.slug, 1, draft, author.id, status);
     if (status === 'approved') {
@@ -124,7 +142,13 @@ export function createSkill(
   });
 
   const { skillId, versionId } = tx();
-  audit(author.id, status === 'approved' ? 'skill.publish' : 'skill.propose', 'skill', skillId, draft.slug);
+  audit(
+    author.id,
+    personal ? 'skill.create_personal' : status === 'approved' ? 'skill.publish' : 'skill.propose',
+    'skill',
+    skillId,
+    draft.slug,
+  );
   return { skill: getSkill(skillId)!, version: getVersion(versionId)! };
 }
 
@@ -179,7 +203,13 @@ export function proposeRevision(
       ) as { v: number }
     ).v + 1;
 
-  const canSelfPublish = (author.role === 'curator' || author.role === 'admin') && !opts.submitForReview;
+  // A personal skill publishes every revision at once, as its first version did.
+  // Its visibility is not editable here: a skill that is already shared may be
+  // on other people's machines, and quietly making it private would delete it
+  // from them. Archiving is that operation, and it says what it does.
+  const personal = skill.visibility === 'personal';
+  const canSelfPublish =
+    personal || ((author.role === 'curator' || author.role === 'admin') && !opts.submitForReview);
   const status = canSelfPublish ? 'approved' : 'pending';
   const full: SkillDraft = { ...draft, slug: skill.slug };
 
@@ -267,6 +297,101 @@ export function deleteSkillPermanently(actor: AuthUser, skill: SkillRow): void {
     db.prepare('DELETE FROM skills WHERE id = ?').run(skill.id);
   })();
   audit(actor.id, 'skill.delete', 'skill', null, skill.slug);
+}
+
+/**
+ * Who may see a personal skill at all.
+ *
+ * Its owner, always. A curator only while a request to share it is waiting for
+ * them, because reading it is how they decide — and only until they have.
+ * Everybody else, including an administrator, never: a private draft that an
+ * administrator can browse is not private.
+ */
+export function canSeeSkill(user: AuthUser, skill: SkillRow): boolean {
+  if (skill.visibility !== 'personal') return true;
+  if (skill.owner_id === user.id) return true;
+  return skill.share_status === 'pending' && canCurate(user);
+}
+
+/** Only the owner writes a personal skill; curator rank does not apply to it. */
+export function canEditSkill(user: AuthUser, skill: SkillRow): boolean {
+  if (skill.visibility === 'personal') return skill.owner_id === user.id;
+  return true;
+}
+
+/**
+ * Asks the curators to turn a personal skill into a company one.
+ *
+ * Deliberately does not create a version. There is nothing to review that the
+ * owner has not already published to themselves; what is being asked for is a
+ * wider audience, not a different skill. Leaving versions alone is what keeps
+ * the owner's own copy serving unchanged however the request goes.
+ */
+export function requestShare(actor: AuthUser, skill: SkillRow): { shared: boolean } {
+  if (skill.visibility !== 'personal') {
+    throw new DomainError('this skill is already shared with the company', 409);
+  }
+  if (skill.archived) throw new DomainError('skill is archived; restore it first', 409);
+  if (!skill.published_version_id) {
+    throw new DomainError('write the skill before offering it to everybody', 409);
+  }
+
+  // A curator sharing their own is the same reasoning as a curator publishing
+  // their own: a queue only they can clear is ceremony, not review.
+  if (canCurate(actor)) {
+    shareNow(actor, skill, 'shared their own skill');
+    return { shared: true };
+  }
+
+  db.prepare(
+    `UPDATE skills SET share_status = 'pending', share_note = NULL,
+            share_asked_at = datetime('now'), updated_at = datetime('now')
+      WHERE id = ?`,
+  ).run(skill.id);
+  audit(actor.id, 'skill.share_request', 'skill', skill.id, skill.slug);
+  return { shared: false };
+}
+
+function shareNow(actor: AuthUser, skill: SkillRow, detail: string): void {
+  db.prepare(
+    `UPDATE skills SET visibility = 'shared', share_status = 'none', share_note = NULL,
+            updated_at = datetime('now')
+      WHERE id = ?`,
+  ).run(skill.id);
+  audit(actor.id, 'skill.share', 'skill', skill.id, `${skill.slug}: ${detail}`);
+}
+
+export function approveShare(reviewer: AuthUser, skill: SkillRow): void {
+  if (skill.share_status !== 'pending') {
+    throw new DomainError('nobody has asked for this skill to be shared', 409);
+  }
+  shareNow(reviewer, skill, 'approved for everybody');
+}
+
+/**
+ * Declines, and hands back a reason. Nothing is removed: the skill goes on
+ * being its owner's, on their machines, exactly as before they asked.
+ */
+export function declineShare(reviewer: AuthUser, skill: SkillRow, note: string): void {
+  if (skill.share_status !== 'pending') {
+    throw new DomainError('nobody has asked for this skill to be shared', 409);
+  }
+  db.prepare(
+    `UPDATE skills SET share_status = 'declined', share_note = ?, updated_at = datetime('now')
+      WHERE id = ?`,
+  ).run(note, skill.id);
+  audit(reviewer.id, 'skill.share_decline', 'skill', skill.id, `${skill.slug}: ${note}`);
+}
+
+export function withdrawShare(actor: AuthUser, skill: SkillRow): void {
+  if (skill.share_status !== 'pending') {
+    throw new DomainError('there is no request to withdraw', 409);
+  }
+  db.prepare(
+    `UPDATE skills SET share_status = 'none', share_asked_at = NULL, updated_at = datetime('now')
+      WHERE id = ?`,
+  ).run(skill.id);
+  audit(actor.id, 'skill.share_withdraw', 'skill', skill.id, skill.slug);
 }
 
 export function rollbackTo(actor: AuthUser, version: SkillVersionRow): void {

@@ -15,7 +15,9 @@ const target = z.object({
 
 function resolve(kind: 'skill' | 'collection', slug: string): { id: number; isDefault: boolean } {
   if (kind === 'skill') {
-    const row = db.prepare('SELECT id FROM skills WHERE slug = ?').get(slug) as
+    // A personal skill is nobody else's to subscribe to, and answering 404
+    // rather than 403 keeps its existence private.
+    const row = db.prepare("SELECT id FROM skills WHERE slug = ? AND visibility = 'shared'").get(slug) as
       | { id: number }
       | undefined;
     if (!row) throw new DomainError('no such skill', 404);
