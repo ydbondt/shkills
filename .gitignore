@@ -1,6 +1,14 @@
 node_modules/
 dist/
 *.log
+
+# A global ignore excludes **/.claude on some machines. The skills below are
+# meant to travel with the repo, so carve exactly them back in — and nothing
+# else under .claude, which is per-machine.
+!.claude/
+.claude/*
+!.claude/skills/
+
 .env
 .env.local
 data/
