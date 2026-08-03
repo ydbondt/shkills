@@ -116,6 +116,28 @@ CREATE TABLE IF NOT EXISTS password_resets (
   voided_at  TEXT
 );
 
+/**
+ * Where the company skills are mirrored to, so they are not trapped in this
+ * database. One row: a deployment mirrors to one place or to none.
+ *
+ * The credential is deliberately absent — it comes from the environment, the
+ * same split as SMTP. Which repository to write to is an administrator's
+ * decision and belongs in the portal; the token that can write to it is an
+ * operator's, and stays out of the database and out of every API response.
+ */
+CREATE TABLE IF NOT EXISTS git_mirror (
+  id          INTEGER PRIMARY KEY CHECK (id = 1),
+  enabled     INTEGER NOT NULL DEFAULT 0,
+  owner       TEXT NOT NULL DEFAULT '',
+  repo        TEXT NOT NULL DEFAULT '',
+  branch      TEXT NOT NULL DEFAULT 'main',
+  path_prefix TEXT NOT NULL DEFAULT 'skills',
+  last_run_at TEXT,
+  last_commit TEXT,
+  last_error  TEXT,
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS audit_log (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   actor_id   INTEGER REFERENCES users(id),
@@ -171,6 +193,8 @@ addColumn('skills', 'visibility', "TEXT NOT NULL DEFAULT 'shared'");
 addColumn('skills', 'share_status', "TEXT NOT NULL DEFAULT 'none'");
 addColumn('skills', 'share_note', 'TEXT');
 addColumn('skills', 'share_asked_at', 'TEXT');
+
+db.prepare('INSERT OR IGNORE INTO git_mirror (id) VALUES (1)').run();
 
 export function audit(
   actorId: number | null,

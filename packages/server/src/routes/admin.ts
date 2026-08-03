@@ -5,6 +5,8 @@ import { hashPassword, requireAuth, requireRole } from '../auth.js';
 import { h, parse, param } from '../http.js';
 import { DomainError } from '../services/skills.js';
 import { originFor } from '../origin.js';
+import { config } from '../config.js';
+import { desiredFiles, getMirror, runMirror, saveMirror } from '../services/mirror.js';
 import {
   RESET_TTL_MINUTES,
   issueResetForUser,
@@ -140,6 +142,63 @@ adminRouter.post(
       name: link.name,
       expiresInMinutes: RESET_TTL_MINUTES,
     });
+  }),
+);
+
+/**
+ * Where the company skills are mirrored to.
+ *
+ * The token is never in the response. An administrator chooses the repository;
+ * whether this server holds a credential that can write to it is a fact about
+ * the deployment, so the answer says only whether one exists.
+ */
+adminRouter.get(
+  '/mirror',
+  requireAuth,
+  requireRole('admin'),
+  h((_req, res) => {
+    res.json({
+      mirror: {
+        ...getMirror(),
+        hasToken: Boolean(config.github.token),
+        fileCount: desiredFiles().size,
+      },
+    });
+  }),
+);
+
+adminRouter.put(
+  '/mirror',
+  requireAuth,
+  requireRole('admin'),
+  h((req, res) => {
+    const body = parse(
+      z.object({
+        enabled: z.boolean().default(false),
+        owner: z.string().max(120).default(''),
+        repo: z.string().max(120).default(''),
+        branch: z.string().max(120).default('main'),
+        pathPrefix: z.string().max(200).default('skills'),
+      }),
+      req.body ?? {},
+    );
+    if (body.enabled && !(body.owner.trim() && body.repo.trim())) {
+      throw new DomainError('name the repository to mirror into, as owner and name');
+    }
+    saveMirror(body);
+    audit(req.user!.id, 'mirror.configure', 'mirror', null, `${body.owner}/${body.repo}`);
+    res.json({ ok: true, mirror: { ...getMirror(), hasToken: Boolean(config.github.token) } });
+  }),
+);
+
+/** Pushes now rather than waiting for the next change. */
+adminRouter.post(
+  '/mirror/sync',
+  requireAuth,
+  requireRole('admin'),
+  h(async (req, res) => {
+    const result = await runMirror(req.user!.id);
+    res.json({ ok: result.ok, result, mirror: { ...getMirror(), hasToken: Boolean(config.github.token) } });
   }),
 );
 
