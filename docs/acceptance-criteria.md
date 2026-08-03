@@ -31,6 +31,11 @@ request is the only authority we have:
   skills: *"Devs first want to test skills before they share it with the world,
   and maybe sync the skills across computers for their own benefit … Once they
   decide to share it, they can propose the update to share."*
+- **G** — [issue #1](https://github.com/ydbondt/shkills/issues/1), the git
+  mirror: *"Skills are stored in the database of shkills. But when people want
+  to step away from shkills, they need to export it somehow … Each change to a
+  skill that is added to the company skills, should be stored/updated/removed
+  from/to a git repository."*
 
 ---
 
@@ -171,6 +176,21 @@ until you offer it.
 | **AC-62** | The owner can offer it to the company; a curator sees the offer in the review queue. | M |
 | **AC-63** | While the offer waits, and after it is declined, the skill stays exactly where it was — on its owner's machines, and nobody else's. The decline says why. | M |
 | **AC-64** | Once a curator agrees, it is an ordinary company skill: in the catalog, installable by anyone, with the history it already had. | M |
+
+## Taking the skills with you
+
+Skills live in this server's SQLite file, which makes leaving Shkills mean
+leaving them behind. The mirror is one-way on purpose: Shkills is the source of
+truth and the repository is a copy you can walk away with.
+
+| # | Criterion | From |
+| --- | --- | --- |
+| **AC-65** | An administrator can point the deployment at a git repository, and only an administrator can. The credential is never handed back by the API. | G |
+| **AC-66** | The repository receives every published company skill as the exact file a machine is given, plus an index explaining how to use them without Shkills. | G |
+| **AC-67** | Publishing a change updates the copy; archiving a skill removes it. | G |
+| **AC-68** | Personal skills are never mirrored — only what the company has agreed to share. | G |
+| **AC-69** | A repository that cannot be reached never stops somebody publishing a skill; the failure is recorded, and the next run catches up. | G |
+| **AC-70** | The mirror only ever deletes the files it writes, so a repository that holds anything else keeps it. | G |
 
 ---
 

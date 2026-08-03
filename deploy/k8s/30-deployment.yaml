@@ -65,6 +65,16 @@ spec:
                 secretKeyRef:
                   name: shkills-secrets
                   key: SHKILLS_JWT_SECRET
+            # Lets the git mirror write. Optional: without it the mirror panel
+            # says so and nothing is pushed, which is the right behaviour for a
+            # deployment that has not chosen a repository yet. Scope it to
+            # `contents: write` on that one repository and nothing else.
+            - name: SHKILLS_GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: shkills-secrets
+                  key: SHKILLS_GITHUB_TOKEN
+                  optional: true
           readinessProbe:
             httpGet:
               path: /api/health

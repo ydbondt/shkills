@@ -52,7 +52,9 @@ async function waitForHealth(url: string, child: ChildProcess, log: () => string
  * decides whether the session cookie carries `Secure`, so the browser in these
  * tests sees the same cookie a homelab deployment issues.
  */
-export async function startServer(options: { mail?: boolean } = {}): Promise<TestServer> {
+export async function startServer(
+  options: { mail?: boolean; githubApi?: string; githubToken?: string } = {},
+): Promise<TestServer> {
   const port = await freePort();
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shkills-e2e-server-'));
   const mailDir = path.join(dataDir, 'mail');
@@ -72,6 +74,10 @@ export async function startServer(options: { mail?: boolean } = {}): Promise<Tes
       // `file` transport writes real messages a scenario can read and follow.
       SHKILLS_MAIL_TRANSPORT: options.mail ? 'file' : 'none',
       SHKILLS_MAIL_DIR: mailDir,
+      // A GitHub that is not GitHub, when the scenario asked for one. Absent
+      // otherwise, which is a deployment that mirrors nowhere — the default.
+      ...(options.githubApi ? { SHKILLS_GITHUB_API: options.githubApi } : {}),
+      ...(options.githubToken ? { SHKILLS_GITHUB_TOKEN: options.githubToken } : {}),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

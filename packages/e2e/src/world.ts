@@ -6,6 +6,7 @@ import path from 'node:path';
 import { Api } from './api.js';
 import { Machine, type CommandResult } from './machine.js';
 import { startServer, type TestServer } from './server.js';
+import { FAKE_TOKEN, startFakeGitHub, type FakeRepo } from './github.js';
 
 export interface Person {
   email: string;
@@ -50,13 +51,24 @@ export class ShkillsWorld extends World {
   resetLink?: string;
   /** What the console recovery command printed. */
   consoleOutput?: string;
+  /** What the last "push the mirror" answered, success or failure. */
+  lastMirrorRun?: unknown;
+  /** The stand-in GitHub, for a scenario that mirrors somewhere. */
+  private github?: FakeRepo;
 
   constructor(options: IWorldOptions) {
     super(options);
   }
 
-  async open(browser: Browser, options: { mail?: boolean } = {}): Promise<void> {
-    this.server = await startServer(options);
+  async open(browser: Browser, options: { mail?: boolean; git?: boolean } = {}): Promise<void> {
+    // Started before the server, because the server is told where GitHub is
+    // when its process starts — the same reason mail is a tag and not a `Given`.
+    if (options.git) this.github = await startFakeGitHub({ owner: 'acme', repo: 'skills' });
+
+    this.server = await startServer({
+      mail: options.mail,
+      ...(this.github ? { githubApi: this.github.url, githubToken: FAKE_TOKEN } : {}),
+    });
     this.context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     this.page = await this.context.newPage();
     this.tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'shkills-e2e-home-'));
@@ -66,7 +78,16 @@ export class ShkillsWorld extends World {
     for (const machine of this.machines.values()) machine.dispose();
     await this.context?.close();
     await this.server?.stop();
+    await this.github?.stop();
     if (this.tmpRoot) fs.rmSync(this.tmpRoot, { recursive: true, force: true });
+  }
+
+  /** The repository this scenario mirrors into, when it asked for one. */
+  repository(): FakeRepo {
+    if (!this.github) {
+      throw new Error('this scenario has no git repository — tag it @with-a-git-repository');
+    }
+    return this.github;
   }
 
   // ---- people ------------------------------------------------------------

@@ -146,6 +146,23 @@ All of it is generic — there is no per-page step definition anywhere.
 | `Given "…" is signed in somewhere else` → `Then "…" is signed out there` | Another session, before and after a reset |
 | `Then "…" can sign in with "…"` · `Then "…" cannot sign in with "…"` | |
 
+**The git mirror** (`src/steps/mirror.steps.ts`)
+
+| Step | |
+| ---- | --- |
+| `Given the skills are mirrored into "acme/skills"` | Points the deployment at the scenario's repository |
+| `When an administrator pushes the mirror` | Forces a run rather than waiting for the debounce |
+| `Then the repository holds the skill "…"` | Also `does not hold`, and `still holds "NOTES.md"` for a file the mirror must not touch |
+| `Then the mirrored "…" is exactly what a machine is given` | Compares against `/raw` — same bytes, not a second rendering |
+| `Given the repository is unreachable` → `Then the mirror says it failed` | And publishing carries on regardless |
+
+A scenario tagged **`@with-a-git-repository`** gets a GitHub that is not GitHub:
+`packages/server/src/test/fake-github.ts`, which speaks the real git-data API
+over a real socket, stores blobs, trees, commits and refs, and lists directories
+as their own entries — so a client that forgets to skip `type: "tree"` fails
+here rather than in production. It is a tag rather than a `Given` for the same
+reason mail is: where GitHub lives is read when the process starts.
+
 A scenario tagged **`@with-a-mail-server`** gets a Shkills that can send email —
 the `file` transport, writing real messages into a directory the steps read.
 Untagged ones get one that cannot, which is what a freshly stood-up deployment

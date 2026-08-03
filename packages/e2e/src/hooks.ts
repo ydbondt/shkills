@@ -32,7 +32,11 @@ AfterAll(async function () {
  */
 Before(async function (this: ShkillsWorld, scenario: ITestCaseHookParameter) {
   const tags = scenario.pickle.tags.map((tag) => tag.name);
-  await this.open(browser, { mail: tags.includes('@with-a-mail-server') });
+  await this.open(browser, {
+    mail: tags.includes('@with-a-mail-server'),
+    // Same reasoning as mail: where GitHub is, is read when the process starts.
+    git: tags.includes('@with-a-git-repository'),
+  });
 });
 
 /**

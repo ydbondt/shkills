@@ -162,7 +162,18 @@ installed the CLI in March and has not opened Claude since.
 The role dropdown is admin-only. Shkills refuses to demote or deactivate the last
 remaining admin.
 
-*Visible to curators (read-only) and admins (editable).*
+**A copy you can walk away with** is the admin-only panel further down: which git
+repository the company skills are mirrored into, when it last ran, and the reason
+if it did not. *Push now* forces a run rather than waiting for the next change.
+
+It shows how many files would be written, so the answer to "are our skills safe
+if this box dies?" is on the screen rather than in a log. If the deployment has
+no `SHKILLS_GITHUB_TOKEN` the panel says so plainly and explains that the token
+is kept out of the database on purpose — an administrator picks the repository,
+but nobody can read the credential back out of the portal.
+
+*Visible to curators (read-only) and admins (editable). The mirror panel is
+admin-only.*
 
 ## Your setup
 
