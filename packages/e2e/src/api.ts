@@ -52,6 +52,15 @@ export class Api {
     return this.request<T>('DELETE', path);
   }
 
+  /** For the endpoints that answer something other than JSON, like `/raw`. */
+  async text(path: string): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/api${path}`, {
+      headers: { ...(this.cookie ? { cookie: this.cookie } : {}) },
+    });
+    if (!response.ok) throw new Error(`GET ${path} → ${response.status}`);
+    return response.text();
+  }
+
   /** The raw status, for the scenarios that assert an API refusal. */
   async attempt(method: string, path: string, body?: unknown): Promise<{ status: number; error: string }> {
     const response = await fetch(`${this.baseUrl}/api${path}`, {

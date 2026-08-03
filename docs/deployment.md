@@ -63,7 +63,41 @@ Everything is an environment variable. There is no config file.
 | `SHKILLS_MAIL_FROM` | `shkills@<public host>` | The envelope sender. |
 | `SHKILLS_MAIL_TRANSPORT` | `smtp` if a URL is set, else `none` | Force it: `smtp`, `file` (write messages to a directory) or `none`. |
 | `SHKILLS_MAIL_DIR` | `<data dir>/mail` | Where the `file` transport writes. |
+| `SHKILLS_GITHUB_TOKEN` | — | Lets the [git mirror](#keeping-a-copy-you-can-walk-away-with) write. Needs `contents: write` on the one repository, and nothing else. |
+| `SHKILLS_GITHUB_API` | `https://api.github.com` | For GitHub Enterprise, or a stand-in during testing. |
 | `NODE_ENV` | — | `production` tightens error output. It does **not** control cookie flags. |
+
+### Keeping a copy you can walk away with
+
+Skills live in one SQLite file. Mirroring them into a git repository means a
+dead server, a lost volume, or a decision to stop using Shkills does not take
+the skills with it.
+
+Two halves, on purpose:
+
+- **The repository** is chosen by an administrator, in the portal, on the People
+  page. It is not an environment variable, because which repository to use is a
+  decision somebody makes after the deployment exists.
+- **The token** is `SHKILLS_GITHUB_TOKEN`, and never touches the database.
+  Nothing reads it back — `GET /api/v1/admin/mirror` answers `hasToken: true`
+  and no more. Give it `contents: write` on that one repository; a
+  fine-grained token scoped to a single repo is exactly the right shape here.
+
+```bash
+SHKILLS_GITHUB_TOKEN=github_pat_…
+```
+
+The mirror is **one way**. Shkills is the source of truth and the repository is
+a copy; an edit made in the repository is overwritten by the next run, which the
+generated `README.md` says out loud. It writes the same bytes a laptop gets, so
+recovering without Shkills is `cp -r <slug> ~/.claude/skills/`.
+
+Personal skills are never mirrored, and the mirror only ever deletes files of
+the shape it writes — so pointing it at a repository that also holds a licence,
+notes or documentation leaves those alone.
+
+A failure never reaches whoever was publishing: the reason is recorded, shown on
+the People page, and the next run catches up on its own.
 
 ### About addresses
 

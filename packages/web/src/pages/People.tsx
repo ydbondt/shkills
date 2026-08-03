@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, type Role, type Stats } from '../api';
 import { CopyButton, ErrorNote, Modal, Spinner, timeAgo } from '../components';
 import { useAsync, useSession, useToast } from '../state';
+import GitMirrorPanel from '../GitMirrorPanel';
 
 interface Person {
   id: number;
@@ -245,6 +246,8 @@ export default function People() {
         </div>
       </Modal>
 
+      {isAdmin && <GitMirrorPanel />}
+
       <hr className="rule my-14" />
 
       <section className="pb-10">
@@ -300,6 +303,13 @@ function describe(action: string): string {
     'auth.reset_requested': 'asked for a way back into the account',
     'auth.reset_issued': 'made a password link for',
     'auth.password_reset': 'recovered their password',
+    'skill.create_personal': 'wrote a skill of their own',
+    'skill.share_request': 'offered to share',
+    'skill.share': 'shared with everybody',
+    'skill.share_decline': 'kept private, at a curator’s request',
+    'skill.share_withdraw': 'withdrew the offer to share',
+    'mirror.configure': 'pointed the git mirror at',
+    'mirror.push': 'mirrored to git',
   };
   return phrases[action] ?? action;
 }

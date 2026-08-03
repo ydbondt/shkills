@@ -9,6 +9,9 @@ services:
       SHKILLS_PUBLIC_URL: ${SHKILLS_PUBLIC_URL:-http://localhost:4000}
       # Generate once and keep it: changing it signs everybody out.
       SHKILLS_JWT_SECRET: ${SHKILLS_JWT_SECRET:?set a long random value}
+      # Optional: lets the git mirror write. The repository itself is chosen in
+      # the portal, because that is a decision made after the deployment exists.
+      SHKILLS_GITHUB_TOKEN: ${SHKILLS_GITHUB_TOKEN:-}
       NODE_ENV: production
     volumes:
       - shkills-data:/data

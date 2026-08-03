@@ -90,6 +90,18 @@ export const config = {
   secureCookies: resolveSecureCookies(),
   isProduction: process.env.NODE_ENV === 'production',
 
+  github: {
+    /**
+     * The credential that may write to the mirror repository. Environment only,
+     * never the database and never an API response — an administrator chooses
+     * *which* repository from the portal, but the token that can write to it is
+     * the operator's to hand over, and this is the same split as SMTP.
+     */
+    token: process.env.SHKILLS_GITHUB_TOKEN ?? '',
+    /** Overridable so the tests can point at a GitHub that is not GitHub. */
+    api: envStr('SHKILLS_GITHUB_API', 'https://api.github.com'),
+  },
+
   mail: {
     transport: resolveMailTransport(),
     smtpUrl: process.env.SHKILLS_SMTP_URL ?? '',

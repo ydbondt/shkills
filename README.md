@@ -180,6 +180,26 @@ to share it is waiting for them.
 <tr>
 <td valign="top">
 
+### 📤 Your skills, not ours
+
+Company skills are mirrored into a git repository as they change — the same
+files a laptop gets. Clone it and `cp -r <slug> ~/.claude/skills/` and you have
+your skills without Shkills. Personal ones are never sent.
+
+</td>
+<td valign="top">
+
+### 🧱 A mirror that cannot lose anything
+
+One way, so there is nothing to merge. It reconciles rather than replays, so a
+run missed while GitHub was down is repaired by the next one — and it deletes
+only the files it writes.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
 ### 📦 Collections, not checklists
 
 "Backend Engineering" or "Sales" — a whole role's worth of skills in one

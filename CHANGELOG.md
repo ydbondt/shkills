@@ -112,6 +112,29 @@ All notable changes to this project are documented here. The format follows
   trying the flow out, and `none`. A mail server that is down downgrades the
   request to the administrators' queue rather than losing the link.
 
+### Added (taking the skills with you)
+
+- **A git mirror** ([#1](https://github.com/ydbondt/shkills/issues/1)) — an
+  administrator points the deployment at a GitHub repository and the company
+  skills are written into it as they are published, changed and retired. The
+  repository holds the exact bytes a laptop is given, at
+  `<prefix>/<slug>/SKILL.md`, plus an index telling somebody who has never seen
+  Shkills how to use them without it. One renderer, so there is no second format
+  to drift.
+- **One way, and reconciled rather than replayed.** Shkills is the source of
+  truth; each run works out what the repository should contain and pushes the
+  difference as one commit. A mirror somebody edited by hand, or a change made
+  while GitHub was unreachable, is repaired by the next run instead of needing
+  its event found and replayed. Nothing runs in the request path — approving a
+  skill must not fail, or wait, because GitHub is slow.
+- **Personal skills are never mirrored**, and deletion is limited to the two
+  path shapes the mirror writes, so a repository that also holds a licence,
+  notes or documentation keeps them.
+- **`SHKILLS_GITHUB_TOKEN`** holds the credential and no endpoint ever returns
+  it — `GET /api/v1/admin/mirror` answers `hasToken` and no more. Which
+  repository is an administrator's decision, in the portal; what can write to it
+  is the operator's.
+
 ### Added (a skill of your own)
 
 - **Personal skills** ([#2](https://github.com/ydbondt/shkills/issues/2)) — a

@@ -1,6 +1,7 @@
 import { audit, db } from '../db.js';
 import { checksum, renderSkillMd, SLUG_RE } from '../skill-format.js';
 import { canCurate, type AuthUser } from '../auth.js';
+import { scheduleMirror } from './mirror.js';
 
 export interface SkillVersionRow {
   id: number;
@@ -149,6 +150,7 @@ export function createSkill(
     skillId,
     draft.slug,
   );
+  if (status === 'approved' && !personal) scheduleMirror();
   return { skill: getSkill(skillId)!, version: getVersion(versionId)! };
 }
 
@@ -228,6 +230,7 @@ export function proposeRevision(
     skill.id,
     `${skill.slug} v${nextVersion}`,
   );
+  if (status === 'approved' && !personal) scheduleMirror();
   return getVersion(versionId)!;
 }
 
@@ -262,6 +265,7 @@ export function approveVersion(reviewer: AuthUser, version: SkillVersionRow, not
   }
   db.transaction(() => publishVersionInternal(version.skill_id, version.id, reviewer.id, note ?? null))();
   audit(reviewer.id, 'skill.approve', 'skill', version.skill_id, `v${version.version}`);
+  scheduleMirror();
 }
 
 export function rejectVersion(reviewer: AuthUser, version: SkillVersionRow, note: string): void {
@@ -283,11 +287,13 @@ export function rejectVersion(reviewer: AuthUser, version: SkillVersionRow, note
 export function archiveSkill(actor: AuthUser, skill: SkillRow): void {
   db.prepare("UPDATE skills SET archived = 1, updated_at = datetime('now') WHERE id = ?").run(skill.id);
   audit(actor.id, 'skill.archive', 'skill', skill.id, skill.slug);
+  scheduleMirror();
 }
 
 export function restoreSkill(actor: AuthUser, skill: SkillRow): void {
   db.prepare("UPDATE skills SET archived = 0, updated_at = datetime('now') WHERE id = ?").run(skill.id);
   audit(actor.id, 'skill.restore', 'skill', skill.id, skill.slug);
+  scheduleMirror();
 }
 
 export function deleteSkillPermanently(actor: AuthUser, skill: SkillRow): void {
@@ -297,6 +303,7 @@ export function deleteSkillPermanently(actor: AuthUser, skill: SkillRow): void {
     db.prepare('DELETE FROM skills WHERE id = ?').run(skill.id);
   })();
   audit(actor.id, 'skill.delete', 'skill', null, skill.slug);
+  scheduleMirror();
 }
 
 /**
@@ -359,6 +366,7 @@ function shareNow(actor: AuthUser, skill: SkillRow, detail: string): void {
       WHERE id = ?`,
   ).run(skill.id);
   audit(actor.id, 'skill.share', 'skill', skill.id, `${skill.slug}: ${detail}`);
+  scheduleMirror();
 }
 
 export function approveShare(reviewer: AuthUser, skill: SkillRow): void {
@@ -400,4 +408,5 @@ export function rollbackTo(actor: AuthUser, version: SkillVersionRow): void {
   }
   db.transaction(() => publishVersionInternal(version.skill_id, version.id, actor.id, 'rollback'))();
   audit(actor.id, 'skill.rollback', 'skill', version.skill_id, `to v${version.version}`);
+  scheduleMirror();
 }

@@ -168,6 +168,32 @@ export interface ShareRequest {
   askedAt: string | null;
 }
 
+/**
+ * Where the company skills are mirrored to. `hasToken` is deliberately a
+ * boolean: the server never hands the credential back.
+ */
+export interface GitMirror {
+  enabled: boolean;
+  owner: string;
+  repo: string;
+  branch: string;
+  pathPrefix: string;
+  lastRunAt: string | null;
+  lastCommit: string | null;
+  lastError: string | null;
+  hasToken: boolean;
+  fileCount: number;
+}
+
+export interface MirrorResult {
+  ok: boolean;
+  commit: string | null;
+  added: string[];
+  updated: string[];
+  removed: string[];
+  error?: string;
+}
+
 export interface Stats {
   skills: number;
   pending: number;

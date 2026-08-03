@@ -202,6 +202,32 @@ the database never holds a usable link.
 A live link is one with neither `used_at` nor `voided_at` and an `expires_at` in
 the future. Everything else about recovery follows from that single predicate.
 
+## `git_mirror`
+
+One row (`id = 1`, enforced by a `CHECK`): a deployment mirrors to one place or
+to none.
+
+| Column | Type | Notes |
+| ------ | ---- | ----- |
+| `enabled` | INTEGER | Off until an administrator turns it on |
+| `owner`, `repo` | TEXT | The GitHub repository to write into |
+| `branch` | TEXT | Defaults to `main` |
+| `path_prefix` | TEXT | Directory inside the repository; empty means the root |
+| `last_run_at` | TEXT | Set on every run, successful or not |
+| `last_commit` | TEXT | The last commit the mirror made; kept when a later run fails |
+| `last_error` | TEXT | `NULL` after a run that worked — that is how the panel knows |
+
+**There is no token column, and there will not be one.** The credential comes
+from `SHKILLS_GITHUB_TOKEN`, the same split as SMTP: choosing the repository is
+an administrator's decision and belongs in the portal, while what can write to
+it is the operator's and should not be readable out of a database backup or an
+API response.
+
+There is also no row per file and no queue of pending changes. The mirror
+reconciles — it works out what the repository should contain and pushes the
+difference — so there is no state to keep between runs beyond "what happened
+last time", and a run that never happened is repaired by the next one.
+
 ## `audit_log`
 
 Append-only. No API modifies or deletes a row.

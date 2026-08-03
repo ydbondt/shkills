@@ -646,6 +646,54 @@ to the administrator **once**, to be handed over out of band. This is how a
 deployment with no mail server delivers a reset. Retires that account's other
 outstanding links.
 
+### `GET /api/v1/admin/mirror` — *admin*
+
+Where the company skills are mirrored to.
+
+```json
+{
+  "mirror": {
+    "enabled": true, "owner": "acme", "repo": "skills",
+    "branch": "main", "pathPrefix": "skills",
+    "lastRunAt": "2026-08-03 21:14:02",
+    "lastCommit": "9f1c2d0…", "lastError": null,
+    "hasToken": true, "fileCount": 7
+  }
+}
+```
+
+**`hasToken` is a boolean and there is no field holding the token.** The
+credential comes from `SHKILLS_GITHUB_TOKEN` and is never returned by any
+endpoint — an administrator chooses *which* repository, the operator hands over
+what can write to it.
+
+### `PUT /api/v1/admin/mirror` — *admin*
+
+```json
+{ "enabled": true, "owner": "acme", "repo": "skills", "branch": "main", "pathPrefix": "skills" }
+```
+
+`pathPrefix` may be empty, which mirrors to the root of the repository. Leading
+and trailing slashes are trimmed. Enabling without naming a repository is `400`.
+
+### `POST /api/v1/admin/mirror/sync` — *admin*
+
+Pushes now instead of waiting for the next change.
+
+```json
+{
+  "ok": true,
+  "result": {
+    "ok": true, "commit": "9f1c2d0…",
+    "added": ["code-review/SKILL.md"], "updated": ["README.md"], "removed": []
+  }
+}
+```
+
+`commit` is `null` when the repository already matched — the mirror does not
+make empty commits. A failure answers `200` with `ok: false` and a `result.error`
+saying why; mirroring is a copy, and a copy being behind is not a client error.
+
 ### `GET /api/v1/admin/audit` — *curator*
 
 ```
@@ -660,7 +708,10 @@ Actions recorded: `auth.login`, `auth.register`, `auth.password_change`,
 `skill.rollback`, `skill.archive`, `skill.restore`, `skill.delete`,
 `collection.create`, `collection.update`, `collection.delete`,
 `collection.add_skill`, `collection.remove_skill`, `device.approve`,
-`device.revoke`, `user.create`, `user.update`.
+`device.revoke`, `user.create`, `user.update`,
+`skill.create_personal`, `skill.share_request`, `skill.share`,
+`skill.share_decline`, `skill.share_withdraw`,
+`mirror.configure`, `mirror.push`.
 
 ### `GET /api/v1/admin/stats` — *auth*
 

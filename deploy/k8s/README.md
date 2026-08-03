@@ -65,6 +65,21 @@ kubectl -n shkills create secret generic github-runner-secret \
   --from-literal=ACCESS_TOKEN=<pat>
 ```
 
+The git mirror needs one more, and only if you want it. It is optional in the
+manifest, so a deployment without it starts fine and the portal says the mirror
+cannot write yet:
+
+```sh
+# A fine-grained PAT with `contents: write` on the mirror repository and nothing
+# else. Added to the existing secret rather than replacing it.
+kubectl -n shkills patch secret shkills-secrets \
+  --type merge \
+  -p "{\"stringData\":{\"SHKILLS_GITHUB_TOKEN\":\"$(read -rs -p 'token: ' t && echo "$t")\"}}"
+```
+
+Then pick the repository on the **People** page in the portal — which repository
+to write to is a decision for whoever runs the company, not a manifest change.
+
 Verify the JWT key arrived intact — a stray newline is easy to introduce and
 produces a confusing "everyone is logged out after deploy":
 
