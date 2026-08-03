@@ -168,6 +168,7 @@ The catalog.
 | `audience` | — | Case-insensitive match within the audience list |
 | `includeArchived` | `0` | `1` to include archived skills |
 | `unpublished` | `1` | `0` to hide skills with no approved version |
+| `visibility` | — | `personal` or `shared` to see only one kind |
 
 ```json
 {
@@ -178,7 +179,8 @@ The catalog.
       "category": "engineering", "audiences": ["engineering"],
       "tags": ["review", "quality"],
       "version": 1, "published": true, "archived": false,
-      "owner": "Rob Alvarez", "pendingCount": 0,
+      "owner": "Rob Alvarez", "visibility": "shared", "shareStatus": "none",
+      "pendingCount": 0,
       "updatedAt": "2026-07-31 11:20:14", "subscribed": true
     }
   ]
@@ -188,6 +190,10 @@ The catalog.
 A skill awaiting its first approval falls back to its most recent version for
 display, so nothing renders blank. `version` is `0` and `published` is `false`
 until something is approved.
+
+**Somebody else's personal skill is never in this list**, whoever is asking,
+including an administrator. A private draft an administrator can browse is not
+private.
 
 ### `GET /api/v1/skills/facets` — *auth*
 
@@ -208,9 +214,21 @@ The review queue, oldest first.
       "changeNote": "Initial version", "author": "Dan Whitfield",
       "createdAt": "2026-07-31 11:20:14", "isNewSkill": true
     }
+  ],
+  "shareRequests": [
+    {
+      "skillId": 12, "slug": "scratch-notes", "version": 3,
+      "title": "Scratch Notes", "description": "…", "category": "engineering",
+      "audiences": ["engineering"], "tags": ["incident"], "body": "…",
+      "owner": "Dana Okafor", "askedAt": "2026-08-03 09:14:02"
+    }
   ]
 }
 ```
+
+`shareRequests` are personal skills whose owner has offered them to the company.
+There is no version to weigh against a live one — the owner is already running
+the version being offered — so the entry names the skill, not a proposal.
 
 ### `POST /api/v1/skills` — *auth*
 
@@ -228,13 +246,15 @@ Creates a skill and its first version.
   "userInvocable": false,
   "body": "# …",
   "changeNote": "Initial version",
-  "submitForReview": false
+  "submitForReview": false,
+  "visibility": "shared"
 }
 ```
 
 | Field | Rule |
 | ----- | ---- |
 | `slug` | Required, must match the slug pattern, must be unique |
+| `visibility` | `shared` (default) or `personal` |
 | `title` | 2–120 characters |
 | `description` | **20–1024 characters** — the error tells you why |
 | `body` | 20–120 000 characters |
@@ -244,9 +264,14 @@ Creates a skill and its first version.
 | `changeNote` | Up to 400 characters |
 
 Curators and admins publish immediately unless `submitForReview` is `true`;
-everyone else lands in `pending`.
+everyone else lands in `pending`. A `personal` skill publishes immediately
+whoever writes it — deferring review is the reason to make one.
 
 `201` `{ skill: { id, slug }, version: { id, version, status } }`.
+
+`409` if the slug is taken, including by somebody's personal skill. The message
+says the name exists and nothing else; the namespace is global because
+`~/.claude/skills/<slug>/` is.
 
 ### `GET /api/v1/skills/:slug` — *auth*
 
@@ -257,7 +282,9 @@ you are subscribed.
 ```json
 {
   "skill": {
-    "id": 2, "slug": "code-review", "owner": "Rob Alvarez", "archived": false,
+    "id": 2, "slug": "code-review", "owner": "Rob Alvarez", "mine": false,
+    "visibility": "shared", "shareStatus": "none", "shareNote": null,
+    "archived": false,
     "createdAt": "…", "updatedAt": "…", "subscribed": true,
     "collections": [{ "slug": "engineering", "name": "Engineering" }],
     "published": {
@@ -276,10 +303,18 @@ you are subscribed.
 }
 ```
 
+**`404` for somebody else's personal skill** — not `403`, which would confirm it
+is there. A curator is the one exception, and only while a request to share it
+is waiting for them, because reading it is how they decide.
+
 ### `POST /api/v1/skills/:slug/versions` — *auth*
 
 Proposes a new version. Same body as `POST /skills` minus `slug`. The live
 version keeps serving until this one is approved. `409` if the skill is archived.
+
+On a personal skill: only its owner may, and every revision publishes at once.
+A `visibility` field in the body is accepted and ignored — changing who can see
+an existing skill goes through the endpoints below.
 
 ### `POST /api/v1/skills/versions/:id/approve` — *curator*
 
@@ -303,15 +338,49 @@ version is `pending`.
 Republishes an older version. Allowed for `superseded` and `approved` versions
 only; anything else is `409`. Recorded in the audit log as `skill.rollback`.
 
+### `POST /api/v1/skills/:slug/share` — *owner of a personal skill*
+
+Offers it to the company.
+
+`{"ok": true, "shared": false}` — a curator now has it in their queue, and
+nothing else has changed: the skill is still personal, still only its owner's,
+still on their machines.
+
+`{"ok": true, "shared": true}` when the owner is themselves a curator, which is
+the same reasoning that lets a curator publish their own version directly.
+
+`409` if the skill is already shared, archived, or has no published version.
+
+### `DELETE /api/v1/skills/:slug/share` — *owner*
+
+Withdraws a request nobody has answered yet. `409` if there is none.
+
+### `POST /api/v1/skills/:slug/share/approve` — *curator*
+
+The skill becomes `shared`: in the catalog, installable by anyone, with the
+version history it already had. No version is written. `409` unless a request is
+`pending`.
+
+### `POST /api/v1/skills/:slug/share/decline` — *curator*
+
+```json
+{ "note": "required — tell them why" }
+```
+
+`share_status` becomes `declined` and the note is shown to the owner. **Nothing
+is removed**: the skill goes on being theirs, on their machines, exactly as
+before they asked. `409` unless a request is `pending`.
+
 ### `DELETE /api/v1/skills/:slug` — *owner or curator*
 
 Archives the skill: it stops syncing to every machine, the history stays.
 `{"ok": true, "archived": true}`.
 
 Add `?purge=1` — **admin only** — to delete it and its subscriptions
-permanently. `{"ok": true, "purged": true}`.
+permanently. `{"ok": true, "purged": true}`. The owner of a *personal* skill may
+purge their own without being an admin: nobody else ever had it.
 
-### `POST /api/v1/skills/:slug/restore` — *curator*
+### `POST /api/v1/skills/:slug/restore` — *curator, or the owner of a personal skill*
 
 Un-archives.
 
@@ -367,6 +436,10 @@ untouched.
 
 Adds a skill, appended at the end. Idempotent.
 
+`404` for a personal skill: a collection hands its contents to everyone who
+joins it, so a private one cannot go in — and a curator has no business learning
+that the name is in use.
+
 ### `DELETE /api/v1/collections/:slug/skills/:skillSlug` — *curator*
 
 Removes it from the collection.
@@ -395,8 +468,9 @@ What you get, and where each skill comes from.
 }
 ```
 
-`sources` is `"direct"` for a personal subscription, or the collection name —
-suffixed with `(company default)` when it is one.
+`sources` is `"direct"` for a subscription you made yourself, `"yours"` for a
+personal skill you own, or the collection name — suffixed with
+`(company default)` when it is one.
 
 ### `POST /api/v1/subscriptions` — *auth*
 
@@ -406,6 +480,9 @@ suffixed with `(company default)` when it is one.
 
 `kind` is `skill` or `collection`. Subscribing to a company-default collection is
 a no-op that returns `200` with an explanatory `note`.
+
+A personal skill is not subscribable by anyone — `404`, including for its owner,
+who already has it. Only shared skills resolve here.
 
 ### `DELETE /api/v1/subscriptions/:kind/:slug` — *auth*
 

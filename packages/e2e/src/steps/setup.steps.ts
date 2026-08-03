@@ -129,6 +129,37 @@ Given(
   },
 );
 
+/**
+ * A skill nobody else will ever see. No review, whoever writes it — which is
+ * what makes it usable for trying something out.
+ */
+Given(
+  '{string} has a skill of their own called {string}',
+  async function (this: ShkillsWorld, email: string, slug: string) {
+    const api = await this.as(email);
+    await api.post('/v1/skills', { ...defaultDraft(this.person(email), slug), visibility: 'personal' });
+  },
+);
+
+Given(
+  '{string} has a skill of their own called {string} saying:',
+  async function (this: ShkillsWorld, email: string, slug: string, body: string) {
+    const api = await this.as(email);
+    await api.post('/v1/skills', {
+      ...defaultDraft(this.person(email), slug, body),
+      visibility: 'personal',
+    });
+  },
+);
+
+Given(
+  '{string} has offered {string} to everybody',
+  async function (this: ShkillsWorld, email: string, slug: string) {
+    const api = await this.as(email);
+    await api.post(`/v1/skills/${slug}/share`);
+  },
+);
+
 Given('the skill {string} is archived', async function (this: ShkillsWorld, slug: string) {
   const api = await this.as(this.curatorEmail());
   await api.del(`/v1/skills/${slug}`);

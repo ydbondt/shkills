@@ -12,7 +12,7 @@ A tour of every screen, what it is for, and who can see it.
 ## Catalog
 
 The front page. Everything published, searchable, with filter chips for
-category, audience, and *Mine*.
+category, audience, *Mine*, and *Only mine to see*.
 
 <p align="center">
   <img src="images/catalog.png" alt="The catalog" width="880">
@@ -29,6 +29,12 @@ start of your next Claude session.
 
 Unpublished skills still show in the catalog for curators, falling back to their
 most recent version so a proposal never renders as a blank card.
+
+Your own **personal** skills sit here too, marked *"only you can see this"* and
+with *"on your machines"* where the Add button would be — they are already
+there, without a subscription. Nobody else's personal skills appear, whatever
+your role, and the *"N live"* count in the subheading counts company skills
+only.
 
 ## Skill detail
 
@@ -52,6 +58,13 @@ collections carry this skill.
 `Archive` retires a skill: it stops being served to every machine on the next
 sync, but the history stays auditable. Owners can archive their own; curators can
 archive anyone's; only an admin can purge one permanently.
+
+On a personal skill of your own, the header instead offers **Offer it to
+everybody**. The dialog says what actually happens: a curator reads it and
+decides, and until they do nothing changes — it is still only yours, and it
+stays on your machines whichever way they go. While the request waits you can
+**Withdraw** it; if it is declined, the reason is shown on the page and the
+skill is simply still yours.
 
 ## Editor
 
@@ -78,6 +91,13 @@ sentence."*
 Members land in the review queue. Curators publish directly, with an explicit
 *"send for review instead"* when they want a second pair of eyes.
 
+**Who is this for?** is the first choice on a new skill, because it changes what
+the rest of the page means. *The company* is the default and behaves as above.
+*Just me, for now* skips review entirely, syncs to your own machines, and stays
+invisible to everyone else — the button then reads **Save to my machines**. It
+is only offered when writing a new skill; changing an existing skill's audience
+is what the share request on its detail page is for.
+
 ## Review
 
 The curator's queue. Oldest first.
@@ -93,7 +113,12 @@ description, with the full instructions one click away. **Approve** publishes it
 to every subscribed machine; **Decline** requires a reason, which the author
 sees.
 
-The nav badge counts the queue, so nobody has to remember to look.
+The queue holds two kinds of thing. **Proposals** are versions waiting to be
+published. **Offers to share** are personal skills whose owner would like
+everybody to have them — those cards say *"wants to share"*, and the card is
+explicit that declining leaves the skill exactly where it is, on its owner's
+machines and nobody else's. The nav badge counts both, so nobody has to remember
+to look.
 
 Approving does not require the author to do anything else. The version becomes
 `approved`, the previously live one becomes `superseded`, and the next sync on

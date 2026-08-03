@@ -38,13 +38,13 @@ All notable changes to this project are documented here. The format follows
   started, concepts, architecture, the portal, the CLI, skill authoring,
   deployment, security, the API, the data model, troubleshooting,
   development, the acceptance criteria and how they are tested.
-- **Tests** — 119 across the three packages, including the sync engine's
+- **Tests** — 141 across the three packages, including the sync engine's
   ownership rules, the hook's idempotency, and the approval workflow's state
   guards.
-- **Acceptance criteria** — [58 numbered statements](docs/acceptance-criteria.md)
+- **Acceptance criteria** — [64 numbered statements](docs/acceptance-criteria.md)
   of what Shkills promises, derived from the original brief, each recording
   where it came from.
-- **Acceptance suite** — `packages/e2e`: 73 Cucumber scenarios covering every
+- **Acceptance suite** — `packages/e2e`: 79 Cucumber scenarios covering every
   one of those criteria, tagged `@AC-n`, run by `npm run test:e2e`. Each
   scenario owns a server, a database, a browser context and a throwaway machine;
   the portal is addressed only through `data-testid`, and the propagation
@@ -111,4 +111,24 @@ All notable changes to this project are documented here. The format follows
 - **A mail sender** with three transports: `smtp` (via nodemailer), `file` for
   trying the flow out, and `none`. A mail server that is down downgrades the
   request to the administrators' queue rather than losing the link.
+
+### Added (a skill of your own)
+
+- **Personal skills** ([#2](https://github.com/ydbondt/shkills/issues/2)) — a
+  skill can be `personal` rather than `shared`. It skips review whoever writes
+  it, reaches its owner's machines with no subscription, and is invisible to
+  everybody else. Trying a skill out no longer means publishing the experiment
+  to the company, and a laptop and a desktop stay in step without either of them
+  being told twice.
+- **Offering one to the company** — `POST /api/v1/skills/:slug/share` puts it in
+  the review queue alongside version proposals. Approving widens who may install
+  it; declining hands back a reason and takes nothing away. Sharing is recorded
+  on the skill, not on a version, so **the copy the owner is already running is
+  untouched either way** — the third invariant holding by construction. Going
+  the other way is refused: archiving is how a shared skill leaves machines, and
+  it says so.
+- **`404`, never `403`, for somebody else's personal skill** — by address, in
+  the catalog, through a subscription, and when a curator tries to put one in a
+  collection. A `403` would confirm it is there. Administrators are not an
+  exception; a private draft an administrator can browse is not private.
 

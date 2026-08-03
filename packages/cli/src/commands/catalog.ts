@@ -16,6 +16,7 @@ interface CatalogSkill {
   published: boolean;
   archived: boolean;
   subscribed: boolean;
+  visibility: 'personal' | 'shared';
 }
 
 interface CollectionSummary {
@@ -74,9 +75,13 @@ export async function browse(query?: string): Promise<void> {
   for (const [category, group] of [...byCategory].sort(([a], [b]) => a.localeCompare(b))) {
     say(`  ${style.dim(category.toUpperCase())}`);
     rows(
+      // The bullet means "this is on your machine". Your own personal skills
+      // are, without a subscription — that is the point of them.
       group.map((s) => [
-        `${s.subscribed ? style.green('•') : ' '} ${style.bold(s.slug)}`,
-        truncate(s.description, 68),
+        `${s.subscribed || s.visibility === 'personal' ? style.green('•') : ' '} ${style.bold(s.slug)}`,
+        s.visibility === 'personal'
+          ? `${style.dim('yours only')} — ${truncate(s.description, 56)}`
+          : truncate(s.description, 68),
       ]),
       '  ',
     );

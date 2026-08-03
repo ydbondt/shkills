@@ -33,11 +33,16 @@ interface Row {
 }
 
 /**
- * Everything a user is entitled to: their direct skill subscriptions, the
- * collections they picked, plus every collection marked as a company default.
+ * Everything a user is entitled to: their own personal skills, their direct
+ * skill subscriptions, the collections they picked, plus every collection
+ * marked as a company default.
  *
  * Default collections are deliberately not opt-out — they are the mechanism by
  * which "everyone uses the same skills" is actually true.
+ *
+ * The `visibility` clause is the one that has to be right: somebody else's
+ * personal skill must not reach this machine by any of the routes below, even
+ * if a stale subscription row somehow points at it.
  */
 export function effectiveSkills(userId: number): SyncSkill[] {
   const rows = db
@@ -47,8 +52,12 @@ export function effectiveSkills(userId: number): SyncSkill[] {
          FROM skills s
          JOIN skill_versions v ON v.id = s.published_version_id
         WHERE s.archived = 0
+          AND (s.visibility = 'shared' OR s.owner_id = @uid)
           AND (
-            s.id IN (SELECT target_id FROM subscriptions WHERE user_id = @uid AND kind = 'skill')
+            -- Your own drafts arrive without asking: syncing them between your
+            -- machines is why they exist.
+            (s.visibility = 'personal' AND s.owner_id = @uid)
+            OR s.id IN (SELECT target_id FROM subscriptions WHERE user_id = @uid AND kind = 'skill')
             OR s.id IN (
               SELECT cs.skill_id FROM collection_skills cs
                 JOIN collections c ON c.id = cs.collection_id
@@ -100,6 +109,11 @@ function sourcesByslug(userId: number): Map<string, string[]> {
     if (!list.includes(source)) list.push(source);
     map.set(slug, list);
   };
+
+  const own = db
+    .prepare("SELECT slug FROM skills WHERE owner_id = ? AND visibility = 'personal'")
+    .all(userId) as { slug: string }[];
+  for (const o of own) push(o.slug, 'yours');
 
   const direct = db
     .prepare(

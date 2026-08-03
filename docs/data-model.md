@@ -67,7 +67,24 @@ The stable identity. Content lives in versions.
 | `owner_id` | INTEGER → `users` | Can archive their own skill |
 | `published_version_id` | INTEGER → `skill_versions`, nullable | **`NULL` means nothing is live yet.** Deferred FK |
 | `archived` | INTEGER | `1` stops it syncing everywhere; history is kept |
+| `visibility` | TEXT | `shared` (default) or `personal` — see below |
+| `share_status` | TEXT | `none`, `pending` or `declined`. Only meaningful while `visibility = 'personal'` |
+| `share_note` | TEXT, nullable | Why a curator said no, for the owner to read |
+| `share_asked_at` | TEXT, nullable | Orders the share queue |
 | `created_at`, `updated_at` | TEXT | `updated_at` bumps on publish and archive |
+
+**Why sharing lives here and not on a version.** Offering a personal skill to
+the company is a request about who may install it, not about which bytes are
+right — the owner has already published the version they are running. Keeping
+the request off `skill_versions` means approving or declining it writes nothing
+to the history, so the copy already on the owner's machines is untouched either
+way. That is the third invariant in `CONTRIBUTING.md` holding by construction
+rather than by care.
+
+`visibility` defaults to `shared`, so every row written before personal skills
+existed keeps meaning what it meant. It is only ever widened: a shared skill
+cannot be made personal again, because it may already be on machines that would
+then silently lose it. Archiving is that operation.
 
 ## `skill_versions`
 

@@ -156,6 +156,22 @@ function addColumn(table: string, column: string, definition: string): void {
  */
 addColumn('users', 'session_epoch', 'INTEGER NOT NULL DEFAULT 0');
 
+/**
+ * A personal skill belongs to one person: it skips review, syncs to that
+ * person's own machines, and is invisible to everybody else. The default is
+ * `shared`, so every skill written before this existed keeps meaning what it
+ * meant — a company skill.
+ *
+ * Sharing is a property of the skill rather than of a version, so that a
+ * request to share never disturbs the version the owner is already running.
+ * That is invariant 3 ("a review in flight never takes the live skill away")
+ * holding for free rather than by care.
+ */
+addColumn('skills', 'visibility', "TEXT NOT NULL DEFAULT 'shared'");
+addColumn('skills', 'share_status', "TEXT NOT NULL DEFAULT 'none'");
+addColumn('skills', 'share_note', 'TEXT');
+addColumn('skills', 'share_asked_at', 'TEXT');
+
 export function audit(
   actorId: number | null,
   action: string,

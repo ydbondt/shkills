@@ -152,6 +152,15 @@ Untagged ones get one that cannot, which is what a freshly stood-up deployment
 is, and the case the administrator queue exists for. It is a tag rather than a
 `Given` because the transport is decided when the server process starts.
 
+**A skill of your own** (`src/steps/setup.steps.ts`, `service.steps.ts`)
+
+| Step | |
+| ---- | --- |
+| `Given "dana@acme.test" has a skill of their own called "scratch-notes"` | A personal skill — no review, that person's machines only. Also `saying:` with a doc string |
+| `Given "dana@acme.test" has offered "scratch-notes" to everybody` | The share request a curator then sees |
+| `Then "rob@acme.test" cannot see the skill "scratch-notes"` | Asked as that person; satisfied by `404`, because a `403` would confirm it is there |
+| `When "rob@acme.test" tries to put "…" into the collection "backend"` | Sets up `Then the server refuses, saying "…"` |
+
 **Setting the scene** (`src/steps/setup.steps.ts`) — `Given these people:`,
 `… has published the skill …`, `… has proposed the skill …`,
 `a collection … containing:`, `a company-wide collection … containing:`,

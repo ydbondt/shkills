@@ -27,6 +27,10 @@ request is the only authority we have:
   button doesnt work. Thoroughly review it."*
 - **R** — the recovery brief: *"A user should be able to recover their password
   when lost."*
+- **M** — [issue #2](https://github.com/ydbondt/shkills/issues/2), personal
+  skills: *"Devs first want to test skills before they share it with the world,
+  and maybe sync the skills across computers for their own benefit … Once they
+  decide to share it, they can propose the update to share."*
 
 ---
 
@@ -151,6 +155,22 @@ which is the normal state of a homelab — without email.
 | **AC-56** | Where a mail server is configured, the link is emailed, and it names the address the person actually reached the portal on. | R |
 | **AC-57** | Where none is, an administrator can see who is waiting and hand over a link that works. | R |
 | **AC-58** | There is a way back in that needs neither a mail server nor a second account, for the administrator of a one-person deployment. | R |
+
+## A skill of your own
+
+Trying a skill out used to mean publishing it, because publishing was the only
+way onto a machine. So the experiment reached everybody. A personal skill is the
+same skill with a smaller audience: no review, your machines only, invisible
+until you offer it.
+
+| # | Criterion | From |
+| --- | --- | --- |
+| **AC-59** | Anyone can write a skill only they can see. It needs no review, and it is on their own machines at the next sync. | M |
+| **AC-60** | Nobody else can see it — not in the catalog, not by its address, not by subscribing to it, and not by a curator putting it in a collection. | M |
+| **AC-61** | Changing a personal skill publishes at once, and the change reaches the owner's other machines. | M |
+| **AC-62** | The owner can offer it to the company; a curator sees the offer in the review queue. | M |
+| **AC-63** | While the offer waits, and after it is declined, the skill stays exactly where it was — on its owner's machines, and nobody else's. The decline says why. | M |
+| **AC-64** | Once a curator agrees, it is an ordinary company skill: in the catalog, installable by anyone, with the history it already had. | M |
 
 ---
 

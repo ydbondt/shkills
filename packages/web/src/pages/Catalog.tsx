@@ -16,6 +16,7 @@ export default function Catalog() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [mineOnly, setMineOnly] = useState(false);
+  const [personalOnly, setPersonalOnly] = useState(false);
 
   const skills = useAsync(() => api.get<{ skills: SkillSummary[] }>('/v1/skills'), []);
   const facets = useAsync(() => api.get<Facets>('/v1/skills/facets'), []);
@@ -26,13 +27,16 @@ export default function Catalog() {
     const needle = query.toLowerCase().trim();
     return all.filter((skill) => {
       if (category && skill.category !== category) return false;
-      if (mineOnly && !skill.subscribed) return false;
+      // A personal skill is on your machines without being subscribed to, so
+      // "Mine" has to mean both, or your own drafts would fall out of it.
+      if (mineOnly && !skill.subscribed && skill.visibility !== 'personal') return false;
+      if (personalOnly && skill.visibility !== 'personal') return false;
       if (!needle) return true;
       return `${skill.slug} ${skill.title} ${skill.description} ${skill.tags.join(' ')}`
         .toLowerCase()
         .includes(needle);
     });
-  }, [skills.data, query, category, mineOnly]);
+  }, [skills.data, query, category, mineOnly, personalOnly]);
 
   async function toggle(skill: SkillSummary) {
     try {
@@ -89,16 +93,24 @@ export default function Catalog() {
           <div className="flex flex-wrap items-center gap-1.5">
             <Chip
               testId="filter-all"
-              active={!category && !mineOnly}
+              active={!category && !mineOnly && !personalOnly}
               onClick={() => {
                 setCategory(null);
                 setMineOnly(false);
+                setPersonalOnly(false);
               }}
             >
               All
             </Chip>
             <Chip testId="filter-mine" active={mineOnly} onClick={() => setMineOnly((value) => !value)}>
               Mine
+            </Chip>
+            <Chip
+              testId="filter-personal"
+              active={personalOnly}
+              onClick={() => setPersonalOnly((value) => !value)}
+            >
+              Only mine to see
             </Chip>
             {(facets.data?.categories ?? []).map((name) => (
               <Chip
@@ -139,6 +151,7 @@ export default function Catalog() {
           <article
             key={skill.id}
             data-testid={`skill-card-${skill.slug}`}
+            data-visibility={skill.visibility}
             className="card card-interactive rise flex flex-col p-6"
             style={{ '--i': Math.min(index, 8) } as React.CSSProperties}
           >
@@ -169,6 +182,12 @@ export default function Catalog() {
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-1.5">
                 <Chip testId={`skill-category-${skill.slug}`}>{skill.category}</Chip>
+                {skill.visibility === 'personal' && (
+                  <Chip testId={`skill-personal-${skill.slug}`}>only you can see this</Chip>
+                )}
+                {skill.shareStatus === 'pending' && (
+                  <Chip testId={`skill-share-pending-${skill.slug}`}>waiting to be shared</Chip>
+                )}
                 {!skill.published && <Chip testId={`skill-unpublished-${skill.slug}`}>not published</Chip>}
                 {skill.archived && <Chip testId={`skill-archived-${skill.slug}`}>archived</Chip>}
               </div>
@@ -178,7 +197,14 @@ export default function Catalog() {
               <span className="t-meta tnum" data-testid={`skill-version-${skill.slug}`}>
                 {skill.published ? `v${skill.version}` : 'draft'} · {timeAgo(skill.updatedAt)}
               </span>
-              {skill.published && !skill.archived && (
+              {/* Your own skill is on your machines already; there is nothing
+                  to subscribe to. */}
+              {skill.visibility === 'personal' && !skill.archived && (
+                <span className="t-meta" data-testid={`skill-yours-${skill.slug}`}>
+                  on your machines
+                </span>
+              )}
+              {skill.visibility === 'shared' && skill.published && !skill.archived && (
                 <button
                   className={skill.subscribed ? 'btn btn-secondary' : 'btn btn-primary'}
                   onClick={() => void toggle(skill)}

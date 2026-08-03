@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, canCurate, type SkillDetail } from '../api';
+import { api, canCurate, type SkillDetail, type Visibility } from '../api';
 import { Chip, ErrorNote, Field, Markdown } from '../components';
 import { useSession, useToast } from '../state';
 
@@ -42,6 +42,7 @@ export default function SkillEditor() {
     body: STARTER,
     changeNote: '',
     userInvocable: false,
+    visibility: 'shared' as Visibility,
   });
   const [slugTouched, setSlugTouched] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -66,6 +67,7 @@ export default function SkillEditor() {
           body: source.body,
           changeNote: '',
           userInvocable: source.userInvocable,
+          visibility: skill.visibility,
         });
         setSlugTouched(true);
       })
@@ -80,6 +82,7 @@ export default function SkillEditor() {
   }, [form.title, editing, slugTouched]);
 
   const curator = canCurate(user);
+  const personal = form.visibility === 'personal';
 
   async function submit(event: FormEvent, forceReview = false) {
     event.preventDefault();
@@ -97,7 +100,9 @@ export default function SkillEditor() {
       body: form.body,
       changeNote: form.changeNote,
       userInvocable: form.userInvocable,
-      submitForReview: forceReview || !curator,
+      visibility: form.visibility,
+      // A skill nobody else will see has nothing to review.
+      submitForReview: !personal && (forceReview || !curator),
     };
 
     try {
@@ -107,9 +112,11 @@ export default function SkillEditor() {
           payload,
         );
         notify(
-          result.version.status === 'approved'
-            ? 'Published. Every machine picks it up on the next Claude session.'
-            : 'Sent for review.',
+          personal
+            ? 'Saved. It reaches your own machines on the next Claude session.'
+            : result.version.status === 'approved'
+              ? 'Published. Every machine picks it up on the next Claude session.'
+              : 'Sent for review.',
           'positive',
         );
         navigate(`/skills/${slug}`);
@@ -119,7 +126,11 @@ export default function SkillEditor() {
           version: { status: string };
         }>('/v1/skills', { ...payload, slug: form.slug });
         notify(
-          result.version.status === 'approved' ? 'Published.' : 'Sent for review.',
+          personal
+            ? 'Saved. Only you can see it, and it is on your machines from the next Claude session.'
+            : result.version.status === 'approved'
+              ? 'Published.'
+              : 'Sent for review.',
           'positive',
         );
         navigate(`/skills/${result.skill.slug}`);
@@ -142,10 +153,16 @@ export default function SkillEditor() {
       <h1 className="t-display mt-6 rise" data-testid="editor-heading">
         {editing ? 'Propose a change' : 'Write a skill'}
       </h1>
-      <p className="t-body-lg mt-4 rise" style={{ maxWidth: '52ch', '--i': 1 } as React.CSSProperties}>
-        {curator
-          ? 'You can publish directly, or send it for a second pair of eyes.'
-          : 'A curator reviews it before it reaches anyone’s machine.'}
+      <p
+        className="t-body-lg mt-4 rise"
+        data-testid="editor-intro"
+        style={{ maxWidth: '52ch', '--i': 1 } as React.CSSProperties}
+      >
+        {personal
+          ? 'Nobody else sees this. It goes to your own machines, and you can offer it to everybody later.'
+          : curator
+            ? 'You can publish directly, or send it for a second pair of eyes.'
+            : 'A curator reviews it before it reaches anyone’s machine.'}
       </p>
 
       <form
@@ -153,6 +170,34 @@ export default function SkillEditor() {
         className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]"
       >
         <div className="space-y-7">
+          {/* Only when writing a new one: changing an existing skill's audience
+              is what the share request on the skill page is for. */}
+          {!editing && (
+            <div data-testid="editor-visibility" data-value={form.visibility}>
+              <span className="t-eyebrow mb-2 block">Who is this for?</span>
+              <div className="flex flex-wrap gap-1.5">
+                <Chip
+                  testId="editor-visibility-shared"
+                  active={!personal}
+                  onClick={() => setForm({ ...form, visibility: 'shared' })}
+                >
+                  The company
+                </Chip>
+                <Chip
+                  testId="editor-visibility-personal"
+                  active={personal}
+                  onClick={() => setForm({ ...form, visibility: 'personal' })}
+                >
+                  Just me, for now
+                </Chip>
+              </div>
+              <p className="t-meta mt-2">
+                {personal
+                  ? 'Skips review, syncs to every machine you have linked, and stays invisible to everyone else.'
+                  : 'Goes into the catalog for everybody to install.'}
+              </p>
+            </div>
+          )}
           <Field label="Title">
             <input
               className="field"
@@ -229,13 +274,25 @@ export default function SkillEditor() {
             <p className="t-meta mt-2">Markdown. Headings, lists, bold, and code blocks.</p>
           </div>
 
-          <Field label={editing ? 'What changed, and why?' : 'Note for the reviewer'}>
+          {/* Nobody reviews a personal skill, so nobody is being written to —
+              the note is a message to yourself, months from now. */}
+          <Field
+            label={
+              editing ? 'What changed, and why?' : personal ? 'A note to your later self' : 'Note for the reviewer'
+            }
+          >
             <input
               className="field"
               data-testid="editor-change-note"
               value={form.changeNote}
               onChange={(e) => setForm({ ...form, changeNote: e.target.value })}
-              placeholder={editing ? 'Added the rule about blocking comments' : 'Initial version'}
+              placeholder={
+                editing
+                  ? 'Added the rule about blocking comments'
+                  : personal
+                    ? 'Trying this out'
+                    : 'Initial version'
+              }
             />
           </Field>
 
@@ -245,13 +302,15 @@ export default function SkillEditor() {
             <button className="btn btn-primary btn-lg" disabled={busy} data-testid="editor-submit">
               {busy
                 ? 'Saving…'
-                : curator
-                  ? editing
-                    ? 'Publish change'
-                    : 'Publish'
-                  : 'Send for review'}
+                : personal
+                  ? 'Save to my machines'
+                  : curator
+                    ? editing
+                      ? 'Publish change'
+                      : 'Publish'
+                    : 'Send for review'}
             </button>
-            {curator && (
+            {curator && !personal && (
               <button
                 type="button"
                 className="btn btn-secondary btn-lg"

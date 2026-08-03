@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { z } from 'zod';
 import { db } from '../db.js';
 import { canCurate, requireAuth, requireRole } from '../auth.js';
@@ -6,21 +6,47 @@ import { h, parse, param } from '../http.js';
 import { renderSkillMd, SLUG_RE } from '../skill-format.js';
 import {
   DomainError,
+  approveShare,
   approveVersion,
   archiveSkill,
+  canEditSkill,
+  canSeeSkill,
   createSkill,
+  declineShare,
   deleteSkillPermanently,
   getSkill,
   getSkillBySlug,
   getVersion,
   proposeRevision,
   rejectVersion,
+  requestShare,
   restoreSkill,
   rollbackTo,
+  withdrawShare,
+  type SkillRow,
   type SkillVersionRow,
 } from '../services/skills.js';
 
 export const skillsRouter: Router = Router();
+
+/**
+ * Finds a skill the caller is allowed to know exists.
+ *
+ * Somebody else's personal skill answers 404, not 403: "you may not see this"
+ * would confirm it is there, which is the one thing a private skill must not do.
+ */
+function visibleSkill(req: Request, slug: string): SkillRow {
+  const skill = getSkillBySlug(slug);
+  if (!skill || !canSeeSkill(req.user!, skill)) throw new DomainError('no such skill', 404);
+  return skill;
+}
+
+/** The same, for a route that is about to change the skill rather than read it. */
+function editableSkill(req: Request, slug: string): SkillRow {
+  const skill = visibleSkill(req, slug);
+  if (!canEditSkill(req.user!, skill)) throw new DomainError('no such skill', 404);
+  return skill;
+}
 
 const draftSchema = z.object({
   title: z.string().min(2).max(120),
@@ -40,6 +66,7 @@ const draftSchema = z.object({
 const createSchema = draftSchema.extend({
   slug: z.string().regex(SLUG_RE, 'use lowercase-words-with-hyphens'),
   submitForReview: z.boolean().optional(),
+  visibility: z.enum(['personal', 'shared']).default('shared'),
 });
 
 interface ListRow {
@@ -47,7 +74,10 @@ interface ListRow {
   slug: string;
   archived: number;
   updated_at: string;
+  owner_id: number;
   owner_name: string;
+  visibility: 'personal' | 'shared';
+  share_status: 'none' | 'pending' | 'declined';
   title: string | null;
   description: string | null;
   category: string | null;
@@ -71,6 +101,8 @@ function toSummary(r: ListRow, subscribed = false) {
     published: r.published_version !== null,
     archived: r.archived === 1,
     owner: r.owner_name,
+    visibility: r.visibility,
+    shareStatus: r.share_status,
     pendingCount: r.pending_count,
     updatedAt: r.updated_at,
     subscribed,
@@ -88,6 +120,7 @@ skillsRouter.get(
         audience: z.string().max(40).optional(),
         includeArchived: z.enum(['0', '1']).default('0'),
         unpublished: z.enum(['0', '1']).default('1'),
+        visibility: z.enum(['personal', 'shared']).optional(),
       }),
       req.query,
     );
@@ -97,7 +130,8 @@ skillsRouter.get(
         // A skill awaiting its first approval has no published version, but it
         // still needs a name and a description to show — fall back to its most
         // recent version so nothing renders as a blank card.
-        `SELECT s.id, s.slug, s.archived, s.updated_at, u.name AS owner_name,
+        `SELECT s.id, s.slug, s.archived, s.updated_at, s.owner_id,
+                s.visibility, s.share_status, u.name AS owner_name,
                 COALESCE(v.title, latest.title)             AS title,
                 COALESCE(v.description, latest.description) AS description,
                 COALESCE(v.category, latest.category)       AS category,
@@ -127,6 +161,10 @@ skillsRouter.get(
 
     const needle = q.q?.toLowerCase().trim();
     const filtered = rows.filter((r) => {
+      // Somebody else's personal skill is not a card they are not allowed to
+      // click — it is not in the catalog at all.
+      if (r.visibility === 'personal' && r.owner_id !== req.user!.id) return false;
+      if (q.visibility && r.visibility !== q.visibility) return false;
       if (q.includeArchived === '0' && r.archived === 1) return false;
       if (q.unpublished === '0' && r.published_version === null) return false;
       if (q.category && r.category !== q.category) return false;
@@ -148,13 +186,14 @@ skillsRouter.get(
 skillsRouter.get(
   '/facets',
   requireAuth,
-  h((_req, res) => {
+  h((req, res) => {
     const versions = db
       .prepare(
         `SELECT v.category, v.audiences FROM skills s
-           JOIN skill_versions v ON v.id = s.published_version_id WHERE s.archived = 0`,
+           JOIN skill_versions v ON v.id = s.published_version_id
+          WHERE s.archived = 0 AND (s.visibility = 'shared' OR s.owner_id = ?)`,
       )
-      .all() as { category: string; audiences: string }[];
+      .all(req.user!.id) as { category: string; audiences: string }[];
     const categories = new Set<string>();
     const audiences = new Set<string>();
     for (const v of versions) {
@@ -189,6 +228,33 @@ skillsRouter.get(
       published_version_id: number | null;
     })[];
 
+    // Somebody offering a skill they have been keeping to themselves. It is a
+    // request about the skill, not about a version — the version they are
+    // running is the one being offered, and it is not disturbed either way.
+    const shares = db
+      .prepare(
+        `SELECT s.id, s.slug, s.share_asked_at, u.name AS owner_name,
+                v.title, v.description, v.category, v.audiences, v.tags, v.body, v.version
+           FROM skills s
+           JOIN users u ON u.id = s.owner_id
+           JOIN skill_versions v ON v.id = s.published_version_id
+          WHERE s.share_status = 'pending' AND s.visibility = 'personal' AND s.archived = 0
+          ORDER BY s.share_asked_at ASC`,
+      )
+      .all() as {
+      id: number;
+      slug: string;
+      share_asked_at: string | null;
+      owner_name: string;
+      title: string;
+      description: string;
+      category: string;
+      audiences: string;
+      tags: string;
+      body: string;
+      version: number;
+    }[];
+
     res.json({
       proposals: rows.map((r) => ({
         versionId: r.id,
@@ -205,6 +271,19 @@ skillsRouter.get(
         author: r.author_name,
         createdAt: r.created_at,
         isNewSkill: r.version === 1 && r.published_version_id === null,
+      })),
+      shareRequests: shares.map((s) => ({
+        skillId: s.id,
+        slug: s.slug,
+        version: s.version,
+        title: s.title,
+        description: s.description,
+        category: s.category,
+        audiences: JSON.parse(s.audiences),
+        tags: JSON.parse(s.tags),
+        body: s.body,
+        owner: s.owner_name,
+        askedAt: s.share_asked_at,
       })),
     });
   }),
@@ -229,8 +308,7 @@ skillsRouter.get(
   '/:slug',
   requireAuth,
   h((req, res) => {
-    const skill = getSkillBySlug(param(req, 'slug'));
-    if (!skill) throw new DomainError('no such skill', 404);
+    const skill = visibleSkill(req, param(req, 'slug'));
 
     const versions = db
       .prepare(
@@ -261,6 +339,10 @@ skillsRouter.get(
         id: skill.id,
         slug: skill.slug,
         owner: owner.name,
+        mine: skill.owner_id === req.user!.id,
+        visibility: skill.visibility,
+        shareStatus: skill.share_status,
+        shareNote: skill.share_note,
         archived: skill.archived === 1,
         createdAt: skill.created_at,
         updatedAt: skill.updated_at,
@@ -315,9 +397,16 @@ skillsRouter.post(
   '/:slug/versions',
   requireAuth,
   h((req, res) => {
-    const skill = getSkillBySlug(param(req, 'slug'));
-    if (!skill) throw new DomainError('no such skill', 404);
-    const body = parse(draftSchema.extend({ submitForReview: z.boolean().optional() }), req.body);
+    const skill = editableSkill(req, param(req, 'slug'));
+    const body = parse(
+      draftSchema.extend({
+        submitForReview: z.boolean().optional(),
+        // Accepted and ignored, so the editor can post the form it rendered.
+        // Visibility changes go through the share endpoints below.
+        visibility: z.enum(['personal', 'shared']).optional(),
+      }),
+      req.body,
+    );
     const version = proposeRevision(req.user!, skill, body, {
       submitForReview: body.submitForReview,
     });
@@ -370,8 +459,7 @@ skillsRouter.delete(
   '/:slug',
   requireAuth,
   h((req, res) => {
-    const skill = getSkillBySlug(param(req, 'slug'));
-    if (!skill) throw new DomainError('no such skill', 404);
+    const skill = editableSkill(req, param(req, 'slug'));
     const purge = req.query.purge === '1';
     // Owners can retire their own skill; taking it away from everyone else's
     // machines permanently is a curator decision.
@@ -379,7 +467,12 @@ skillsRouter.delete(
       throw new DomainError('only the owner or a curator can remove this skill', 403);
     }
     if (purge) {
-      if (req.user!.role !== 'admin') throw new DomainError('only an admin can purge a skill', 403);
+      // Nobody but its owner ever had it, so there is nothing for a curator to
+      // weigh — a personal skill is its owner's to throw away.
+      const ownPersonal = skill.visibility === 'personal' && skill.owner_id === req.user!.id;
+      if (req.user!.role !== 'admin' && !ownPersonal) {
+        throw new DomainError('only an admin can purge a skill', 403);
+      }
       deleteSkillPermanently(req.user!, skill);
       res.json({ ok: true, purged: true });
       return;
@@ -392,11 +485,59 @@ skillsRouter.delete(
 skillsRouter.post(
   '/:slug/restore',
   requireAuth,
+  h((req, res) => {
+    const skill = editableSkill(req, param(req, 'slug'));
+    // Putting a company skill back on everyone's machines is a curator call;
+    // putting your own draft back is not.
+    const ownPersonal = skill.visibility === 'personal' && skill.owner_id === req.user!.id;
+    if (!canCurate(req.user!) && !ownPersonal) throw new DomainError('requires curator role', 403);
+    restoreSkill(req.user!, skill);
+    res.json({ ok: true });
+  }),
+);
+
+/** Offers a personal skill to the company. Only its owner may. */
+skillsRouter.post(
+  '/:slug/share',
+  requireAuth,
+  h((req, res) => {
+    const skill = editableSkill(req, param(req, 'slug'));
+    res.json({ ok: true, ...requestShare(req.user!, skill) });
+  }),
+);
+
+skillsRouter.delete(
+  '/:slug/share',
+  requireAuth,
+  h((req, res) => {
+    const skill = editableSkill(req, param(req, 'slug'));
+    withdrawShare(req.user!, skill);
+    res.json({ ok: true });
+  }),
+);
+
+skillsRouter.post(
+  '/:slug/share/approve',
+  requireAuth,
   requireRole('curator'),
   h((req, res) => {
-    const skill = getSkillBySlug(param(req, 'slug'));
-    if (!skill) throw new DomainError('no such skill', 404);
-    restoreSkill(req.user!, skill);
+    const skill = visibleSkill(req, param(req, 'slug'));
+    approveShare(req.user!, skill);
+    res.json({ ok: true });
+  }),
+);
+
+skillsRouter.post(
+  '/:slug/share/decline',
+  requireAuth,
+  requireRole('curator'),
+  h((req, res) => {
+    const skill = visibleSkill(req, param(req, 'slug'));
+    const body = parse(
+      z.object({ note: z.string().min(1, 'tell them why').max(400) }),
+      req.body ?? {},
+    );
+    declineShare(req.user!, skill, body.note);
     res.json({ ok: true });
   }),
 );
@@ -405,8 +546,8 @@ skillsRouter.get(
   '/:slug/raw',
   requireAuth,
   h((req, res) => {
-    const skill = getSkillBySlug(param(req, 'slug'));
-    if (!skill?.published_version_id) throw new DomainError('no published version', 404);
+    const skill = visibleSkill(req, param(req, 'slug'));
+    if (!skill.published_version_id) throw new DomainError('no published version', 404);
     const v = getVersion(skill.published_version_id)!;
     res.type('text/markdown').send(
       renderSkillMd({
