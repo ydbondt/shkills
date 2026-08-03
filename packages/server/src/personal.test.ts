@@ -291,6 +291,21 @@ describe('sharing as a curator, and the way back', () => {
     expect(body.skill.visibility).toBe('shared');
   });
 
+  it('leaves personal skills out of the headline count, and puts share requests into the queue count', async () => {
+    await request(app).post('/api/v1/skills').set('Cookie', lead).send(sampleSkill);
+    await makePersonal(dev, 'scratch-notes');
+
+    const before = await request(app).get('/api/v1/admin/stats').set('Cookie', dev);
+    expect(before.body.stats.skills).toBe(1);
+    expect(before.body.stats.pending).toBe(0);
+
+    await request(app).post('/api/v1/skills/scratch-notes/share').set('Cookie', dev);
+
+    const after = await request(app).get('/api/v1/admin/stats').set('Cookie', lead);
+    expect(after.body.stats.skills).toBe(1);
+    expect(after.body.stats.pending).toBe(1);
+  });
+
   it('says a name is taken even when the skill holding it is somebody\'s private one', async () => {
     await makePersonal(dev, 'scratch-notes');
     const res = await request(app)

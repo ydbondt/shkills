@@ -3,6 +3,7 @@
 Five nouns and one verb. Once these are clear, the rest of Shkills is obvious.
 
 - [Skill](#skill)
+- [Visibility](#visibility)
 - [Version](#version)
 - [Collection](#collection)
 - [Subscription](#subscription)
@@ -33,6 +34,40 @@ only an admin can purge it permanently.
 
 > A skill's description is not documentation, it is a **trigger**. See
 > [Writing skills](authoring-skills.md) for how to get it right.
+
+## Visibility
+
+A skill is either **shared** — a company skill, the default, everything above —
+or **personal**.
+
+A personal skill exists because trying one out used to mean publishing it, since
+publishing was the only way onto a machine. So every experiment reached
+everybody. A personal skill is the same skill with a smaller audience:
+
+| | Shared | Personal |
+| --- | --- | --- |
+| Review | Members propose; a curator approves | None, whoever writes it |
+| Who can see it | Everybody | Its owner. A curator too, but only while an offer to share it is waiting |
+| How it reaches a machine | Subscribe, or join a collection that has it | Its owner's machines, with no subscription |
+| Can go in a collection | Yes | No — a collection hands its skills to everyone who joins it |
+
+**Offering it to the company** is a request about the skill, not about a
+version: `share_status` goes to `pending`, a curator sees it in the review
+queue, and approving only widens who may install it. Nothing is written to the
+version history, so the copy the owner is already running is untouched whichever
+way the answer goes — declining takes nothing off their machines, and hands back
+a reason.
+
+Going the other way is refused. A shared skill may already be on other people's
+machines, and quietly making it private would delete it from them. **Archiving**
+is that operation, and it says what it is doing.
+
+One consequence worth knowing: slugs are unique across the whole instance,
+including personal ones. The slug is the directory name under
+`~/.claude/skills/`, so two skills of one name could never both be installed
+anyway — the namespace is global because the filesystem is. Asking for a name
+somebody's private skill already holds is refused, and the refusal says the name
+is taken and nothing else.
 
 ## Version
 
@@ -96,7 +131,9 @@ Your **effective skill set** is the union of:
 
 1. your direct skill subscriptions,
 2. every skill in every collection you joined,
-3. every skill in every **company default** collection.
+3. every skill in every **company default** collection,
+4. every **personal** skill you own — no subscription involved. Syncing your own
+   drafts between your own machines should not need a second decision.
 
 Archived skills and skills with no published version are excluded. The portal and
 `shkills list` both show *why* you have each skill:

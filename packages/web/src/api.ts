@@ -62,6 +62,11 @@ export interface User {
   department: string;
 }
 
+export type Visibility = 'personal' | 'shared';
+
+/** Where a personal skill stands with the curators. */
+export type ShareStatus = 'none' | 'pending' | 'declined';
+
 export interface SkillSummary {
   id: number;
   slug: string;
@@ -74,6 +79,8 @@ export interface SkillSummary {
   published: boolean;
   archived: boolean;
   owner: string;
+  visibility: Visibility;
+  shareStatus: ShareStatus;
   pendingCount: number;
   updatedAt: string;
   subscribed: boolean;
@@ -104,6 +111,10 @@ export interface SkillDetail {
   id: number;
   slug: string;
   owner: string;
+  mine: boolean;
+  visibility: Visibility;
+  shareStatus: ShareStatus;
+  shareNote: string | null;
   archived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -140,6 +151,21 @@ export interface Proposal {
   author: string;
   createdAt: string;
   isNewSkill: boolean;
+}
+
+/** Somebody offering a skill they have been keeping to themselves. */
+export interface ShareRequest {
+  skillId: number;
+  slug: string;
+  version: number;
+  title: string;
+  description: string;
+  category: string;
+  audiences: string[];
+  tags: string[];
+  body: string;
+  owner: string;
+  askedAt: string | null;
 }
 
 export interface Stats {

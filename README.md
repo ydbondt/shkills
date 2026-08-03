@@ -160,6 +160,26 @@ skill away from anyone** — v3 keeps serving while v4 waits.
 <tr>
 <td valign="top">
 
+### 🧪 Try one out first, on your own machines
+
+A **personal** skill skips review, syncs to every machine you have linked, and
+is invisible to everybody else. Offer it to the company when it has earned it —
+and if a curator says no, it is simply still yours.
+
+</td>
+<td valign="top">
+
+### 🔍 Nobody browses your drafts
+
+Not by the catalog, not by its address, not an administrator. A personal skill
+answers `404` to everyone but its owner — and to a curator only while an offer
+to share it is waiting for them.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
 ### 📦 Collections, not checklists
 
 "Backend Engineering" or "Sales" — a whole role's worth of skills in one

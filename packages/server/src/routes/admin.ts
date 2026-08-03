@@ -167,10 +167,18 @@ adminRouter.get(
   h((_req, res) => {
     const one = <T>(sql: string, ...params: unknown[]): T => db.prepare(sql).get(...params) as T;
     const stats = {
+      // Company skills only. Counting everybody's private drafts would both
+      // overstate the catalog and quietly say how many there are.
       skills: one<{ n: number }>(
-        'SELECT COUNT(*) AS n FROM skills WHERE archived = 0 AND published_version_id IS NOT NULL',
+        `SELECT COUNT(*) AS n FROM skills
+          WHERE archived = 0 AND published_version_id IS NOT NULL AND visibility = 'shared'`,
       ).n,
-      pending: one<{ n: number }>("SELECT COUNT(*) AS n FROM skill_versions WHERE status = 'pending'").n,
+      // What a curator has waiting: proposed versions and offers to share.
+      pending:
+        one<{ n: number }>("SELECT COUNT(*) AS n FROM skill_versions WHERE status = 'pending'").n +
+        one<{ n: number }>(
+          "SELECT COUNT(*) AS n FROM skills WHERE share_status = 'pending' AND archived = 0",
+        ).n,
       collections: one<{ n: number }>('SELECT COUNT(*) AS n FROM collections').n,
       people: one<{ n: number }>('SELECT COUNT(*) AS n FROM users WHERE active = 1').n,
       linkedDevices: one<{ n: number }>(

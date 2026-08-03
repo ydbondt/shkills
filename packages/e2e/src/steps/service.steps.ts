@@ -30,6 +30,28 @@ When(
   },
 );
 
+When(
+  '{string} tries to put {string} into the collection {string}',
+  async function (this: ShkillsWorld, email: string, slug: string, collection: string) {
+    const api = await this.as(email);
+    this.lastApiAttempt = await api.attempt('PUT', `/v1/collections/${collection}/skills/${slug}`);
+  },
+);
+
+/**
+ * Asked as that person, and satisfied by a 404 rather than a 403: being told
+ * "you may not see this" would confirm it is there, which is the one thing a
+ * private skill must not do.
+ */
+Then(
+  '{string} cannot see the skill {string}',
+  async function (this: ShkillsWorld, email: string, slug: string) {
+    const api = await this.as(email);
+    const attempt = await api.attempt('GET', `/v1/skills/${slug}`);
+    assert.equal(attempt.status, 404, `${email} can see "${slug}" after all (${attempt.status})`);
+  },
+);
+
 Then('there is no skill called {string}', async function (this: ShkillsWorld, slug: string) {
   const api = await this.as(this.curatorEmail());
   const attempt = await api.attempt('GET', `/v1/skills/${slug}`);

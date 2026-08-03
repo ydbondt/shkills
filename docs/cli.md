@@ -120,7 +120,9 @@ A `×` instead of `•` means the state file expects a skill that is not on disk
 ### `shkills list`
 
 What is installed here, and **why** — which collection or direct subscription
-put it there.
+put it there. A skill of your own reads `via yours`: personal skills reach your
+machines without a subscription, which is what makes them worth having on more
+than one.
 
 <p align="center">
   <img src="images/terminal-list.png" alt="shkills list" width="820">
@@ -132,6 +134,10 @@ put it there.
 
 Searches the company catalog, grouped by category. A green `•` marks skills you
 already have. Only published skills are listed.
+
+Your own personal skills appear here marked `yours only`, and always with a `•`
+— they are on your machines already. Nobody else's ever appear. Writing one is a
+portal job; see [Visibility](concepts.md#visibility).
 
 <p align="center">
   <img src="images/terminal-browse.png" alt="shkills browse" width="820">

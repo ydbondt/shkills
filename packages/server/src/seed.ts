@@ -5,7 +5,7 @@
  */
 import { db } from './db.js';
 import { hashPassword } from './auth.js';
-import { createSkill, type SkillDraft } from './services/skills.js';
+import { createSkill, getSkill, requestShare, type SkillDraft } from './services/skills.js';
 import type { AuthUser } from './auth.js';
 
 const existing = (db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }).n;
@@ -304,6 +304,59 @@ for (const seed of skills) {
   created.set(draft.slug, skill.id);
 }
 
+// Two skills people are keeping to themselves — one still private, one already
+// offered to the company, so both halves of the flow are visible in a fresh
+// install rather than only describable.
+const personal: [AuthUser, SkillDraft, boolean][] = [
+  [
+    ines,
+    {
+      slug: 'incident-timeline',
+      title: 'Incident Timeline',
+      description:
+        'Use when taking notes during an incident, to keep a timeline that survives being read the next morning.',
+      category: 'engineering',
+      audiences: ['engineering'],
+      tags: ['incident'],
+      userInvocable: false,
+      changeNote: 'Trying this out',
+      visibility: 'personal',
+      body: `Write the timeline first and the cause afterwards, never the other way round.
+
+- One line per event, in UTC, newest at the bottom.
+- Record what you *observed* separately from what you *concluded*.
+- Note the time you started looking, not just the time it broke.`,
+    },
+    false,
+  ],
+  [
+    dan,
+    {
+      slug: 'release-notes',
+      title: 'Release Notes',
+      description:
+        'Use when writing release notes or a changelog entry, to describe what changed for the person reading it.',
+      category: 'product',
+      audiences: ['product'],
+      tags: ['writing'],
+      userInvocable: false,
+      changeNote: 'Been using this for a month',
+      visibility: 'personal',
+      body: `Lead with what somebody can now do that they could not before.
+
+- Name the person it changes something for, then what changed.
+- Say what it replaces, if it replaces something.
+- No internal ticket numbers. Nobody outside can read them.`,
+    },
+    true,
+  ],
+];
+for (const [author, draft, offered] of personal) {
+  const { skill } = createSkill(author, draft);
+  created.set(draft.slug, skill.id);
+  if (offered) requestShare(author, getSkill(skill.id)!);
+}
+
 function addCollection(
   slug: string,
   name: string,
@@ -393,7 +446,9 @@ for (const [user, hostname, ago] of devices) {
   linkDevice.run(user.id, hostname, `seed:${hostname}`, hostname.slice(0, 8), ago, ago);
 }
 
-console.log(`Seeded ${skills.length} skills, 4 collections and 5 people.`);
+console.log(
+  `Seeded ${skills.length} company skills, ${personal.length} personal ones, 4 collections and 5 people.`,
+);
 console.log('');
 console.log('  Sign in at the portal with any of these — password: shkills123');
 console.log('');
@@ -408,4 +463,7 @@ const waiting = (
   }
 ).n;
 console.log('');
-console.log(`  ${waiting} proposals are waiting in the review queue — sign in as a curator to see them.`);
+console.log(
+  `  ${waiting} proposals and 1 offer to share are waiting in the review queue — sign in as a curator to see them.`,
+);
+console.log('  Sign in as ines@acme.test to see a skill only she can see.');

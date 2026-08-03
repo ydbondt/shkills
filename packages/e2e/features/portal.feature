@@ -6,6 +6,7 @@ Feature: The portal itself
     Given these people:
       | name        | email          | role    | department  |
       | Maya Chen   | maya@acme.test | admin   | engineering |
+      | Dana Okafor | dana@acme.test | member  | engineering |
     And "maya@acme.test" has published the skill "commit-messages"
     And a collection "engineering" containing:
       | commit-messages |
@@ -24,6 +25,19 @@ Feature: The portal itself
       | review     |
       | your setup |
       | people     |
+
+  @AC-43
+  Scenario: A personal skill and the offer to share it fit on a phone
+    Given "maya@acme.test" has a skill of their own called "scratch-notes"
+    And "dana@acme.test" has a skill of their own called "release-notes"
+    And "dana@acme.test" has offered "release-notes" to everybody
+    And I am signed in as "maya@acme.test"
+    When I resize the window to 390 by 844
+    And I open the skill "scratch-notes"
+    Then the page does not scroll sideways
+    When I open the "review" page
+    Then I see "share-request-release-notes"
+    And the page does not scroll sideways
 
   @AC-43
   Scenario: Sign-in fits on a phone

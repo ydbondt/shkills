@@ -20,6 +20,7 @@ export default function SkillDetail() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<'skill' | 'file' | 'history'>('skill');
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const [confirmShare, setConfirmShare] = useState(false);
 
   const { data, error, loading, reload } = useAsync(
     () => api.get<{ skill: Detail }>(`/v1/skills/${slug}`),
@@ -65,6 +66,28 @@ export default function SkillDetail() {
     reload();
   }
 
+  async function askToShare() {
+    try {
+      const result = await api.post<{ shared: boolean }>(`/v1/skills/${skill.slug}/share`);
+      notify(
+        result.shared
+          ? 'Shared. It is in the catalog for everybody now.'
+          : 'Asked. A curator decides, and it stays on your machines either way.',
+        'positive',
+      );
+      setConfirmShare(false);
+      reload();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'That did not work.', 'negative');
+    }
+  }
+
+  async function withdrawShare() {
+    await api.del(`/v1/skills/${skill.slug}/share`);
+    notify('Withdrawn. It is yours alone again.');
+    reload();
+  }
+
   async function rollback(versionId: number, version: number) {
     try {
       await api.post(`/v1/skills/versions/${versionId}/rollback`);
@@ -76,7 +99,13 @@ export default function SkillDetail() {
   }
 
   return (
-    <div className="pt-12" data-testid="skill-detail" data-slug={skill.slug}>
+    <div
+      className="pt-12"
+      data-testid="skill-detail"
+      data-slug={skill.slug}
+      data-visibility={skill.visibility}
+      data-share-status={skill.shareStatus}
+    >
       <Link to="/" className="t-meta" data-testid="back-to-skills">
         ← All skills
       </Link>
@@ -85,6 +114,12 @@ export default function SkillDetail() {
         <div style={{ maxWidth: '44rem' }}>
           <div className="flex flex-wrap items-center gap-2">
             <Chip testId="skill-category">{live?.category ?? 'unpublished'}</Chip>
+            {skill.visibility === 'personal' && (
+              <Chip testId="skill-personal">only you can see this</Chip>
+            )}
+            {skill.shareStatus === 'pending' && (
+              <Chip testId="skill-share-pending">waiting to be shared</Chip>
+            )}
             {skill.archived && <Chip testId="skill-archived">archived</Chip>}
             {live && <StatusBadge status="approved" testId="skill-status" />}
           </div>
@@ -102,7 +137,7 @@ export default function SkillDetail() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {live && !skill.archived && (
+          {skill.visibility === 'shared' && live && !skill.archived && (
             <button
               className={skill.subscribed ? 'btn btn-secondary' : 'btn btn-primary'}
               onClick={() => void toggleSubscription()}
@@ -112,14 +147,50 @@ export default function SkillDetail() {
               {skill.subscribed ? 'Installed' : 'Add to my Claude'}
             </button>
           )}
-          <button
-            className="btn btn-secondary"
-            data-testid="skill-edit"
-            onClick={() => navigate(`/skills/${skill.slug}/edit`)}
-          >
-            {canCurate(user) ? 'Edit' : 'Propose a change'}
-          </button>
-          {canCurate(user) &&
+          {skill.visibility === 'personal' && skill.mine && !skill.archived && (
+            skill.shareStatus === 'pending' ? (
+              <button
+                className="btn btn-secondary"
+                data-testid="skill-share-withdraw"
+                onClick={() => void withdrawShare()}
+              >
+                Withdraw the request
+              </button>
+            ) : (
+              <button
+                className="btn btn-primary"
+                data-testid="skill-share"
+                onClick={() => setConfirmShare(true)}
+              >
+                Offer it to everybody
+              </button>
+            )
+          )}
+          {(skill.visibility === 'shared' || skill.mine) && (
+            <button
+              className="btn btn-secondary"
+              data-testid="skill-edit"
+              onClick={() => navigate(`/skills/${skill.slug}/edit`)}
+            >
+              {canCurate(user) || skill.visibility === 'personal' ? 'Edit' : 'Propose a change'}
+            </button>
+          )}
+          {skill.visibility === 'personal' &&
+            skill.mine &&
+            (skill.archived ? (
+              <button className="btn btn-quiet" data-testid="skill-restore" onClick={() => void restore()}>
+                Restore
+              </button>
+            ) : (
+              <button
+                className="btn btn-danger"
+                data-testid="skill-archive"
+                onClick={() => setConfirmArchive(true)}
+              >
+                Archive
+              </button>
+            ))}
+          {skill.visibility === 'shared' && canCurate(user) &&
             (skill.archived ? (
               <button className="btn btn-quiet" data-testid="skill-restore" onClick={() => void restore()}>
                 Restore
@@ -135,6 +206,31 @@ export default function SkillDetail() {
             ))}
         </div>
       </header>
+
+      {/* The owner's own copy is unaffected by any of this, and saying so is
+          what makes offering it feel safe enough to do. */}
+      {skill.visibility === 'personal' && skill.shareStatus === 'pending' && (
+        <div className="card mt-6 p-6" data-testid="share-request">
+          <p className="text-soft">
+            {skill.mine
+              ? 'A curator is looking at this. It stays on your machines whatever they decide.'
+              : `${skill.owner} would like everybody to have this. It is already on their machines; sharing it only widens who else can install it.`}
+          </p>
+          {!skill.mine && canCurate(user) && (
+            <Link to="/review" className="t-meta accent mt-4 inline-block" data-testid="share-to-review">
+              Decide in the review queue →
+            </Link>
+          )}
+        </div>
+      )}
+
+      {skill.visibility === 'personal' && skill.mine && skill.shareStatus === 'declined' && (
+        <div className="card mt-6 p-6" data-testid="share-declined">
+          <p className="text-soft">
+            Not shared, and it is still yours: <strong>{skill.shareNote}</strong>
+          </p>
+        </div>
+      )}
 
       {skill.collections.length > 0 && (
         <p className="t-meta mt-6" data-testid="skill-collections">
@@ -252,14 +348,40 @@ export default function SkillDetail() {
       </div>
 
       <Modal
+        open={confirmShare}
+        onClose={() => setConfirmShare(false)}
+        title="Offer this to everybody?"
+        testId="share-dialog"
+      >
+        <p className="text-soft">
+          {canCurate(user)
+            ? 'It goes into the catalog for anybody to install, and you can archive it later if that turns out to be wrong.'
+            : 'A curator reads it and decides. Until then nothing changes — it is still only yours, and it stays on your machines whichever way they go.'}
+        </p>
+        <div className="mt-7 flex justify-end gap-2">
+          <button
+            className="btn btn-secondary"
+            data-testid="share-cancel"
+            onClick={() => setConfirmShare(false)}
+          >
+            Not yet
+          </button>
+          <button className="btn btn-primary" data-testid="share-confirm" onClick={() => void askToShare()}>
+            {canCurate(user) ? 'Share it' : 'Ask a curator'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
         open={confirmArchive}
         onClose={() => setConfirmArchive(false)}
         title="Archive this skill?"
         testId="archive-dialog"
       >
         <p className="text-soft">
-          It disappears from every machine that has it, at the start of their next Claude session.
-          The history stays here, and a curator can restore it.
+          {skill.visibility === 'personal'
+            ? 'It comes off your own machines at the start of your next Claude session. The history stays here, and you can restore it.'
+            : 'It disappears from every machine that has it, at the start of their next Claude session. The history stays here, and a curator can restore it.'}
         </p>
         <div className="mt-7 flex justify-end gap-2">
           <button
